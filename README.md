@@ -33,53 +33,54 @@ Lingkungan praktik (Server VPS Production):
 
 | Item | Keterangan |
 |---|---|
-| Server / Hosting | VPS Ubuntu Server |
-| Akses Server | SSH Remote Terminal |
+| Server / Hosting | Dedicated Laptop Server (Linux Mint / Ubuntu-based Bare-Metal) |
+| Akses Server | SSH Remote Terminal (ssh fatihzaraj@192.168.1.50) |
+| Docker Engine | Docker Engine & Docker Compose Plugin (v2+) |
+| Docker Image | jvmilazz0/kavita:latest |
+| Arsitektur Jaringan | Host Port 50000 -> Container Port 5000 -> Cloudflare Tunnel Outbound -> Domain HTTPS |
+| Enkripsi SSL/TLS | Automatic Cloudflare Edge Certificate (TLS 1.3) |
 | Domain Publik | [https://kavita.fatihzar.my.id/](https://kavita.fatihzar.my.id/) |
-| Arsitektur Jaringan | Docker Container Port 5000 -> Reverse Proxy / Cloudflare Tunnel -> Domain HTTPS |
-| Docker | Docker Engine & Docker Compose Plugin |
 | Image | `jvmilazz0/kavita:latest` |
 
 Alur akses pengguna ke server Kavita:
 
 ```mermaid
 flowchart LR
-    U["Pengguna / Browser"] -->|HTTPS| D["Domain kavita.fatihzar.my.id"]
-    D -->|Reverse Proxy / Tunnel| S["VPS Port 5000"]
-
-
-    S --> C["Container Kavita (Docker)"]
-    C --> F["Folder ~/kavita/manga"]
-    C --> V["Volume kavita-config"]
-
+    U["Pengguna / Browser"] -->|HTTPS / Port 443| D["Domain kavita.fatihzar.my.id"]
+    D -->|Cloudflare Tunnel / Outbound| S["Server Host (Port 50000)"]
+    S -->|Docker Port Mapping| C["Container Kavita (Docker Port 5000)"]
+    C -->|Volume Mount| F["Folder ~/manga"]
+    C -->|Volume Mount| V["Volume ./config"]
 
 ```
 # Instalasi
 [`^ kembali ke atas ^`](#)
 
 #### Kebutuhan Sistem :
-- Server VPS dengan sistem operasi Linux (Ubuntu 22.04 / 24.04 LTS).
-- Hak akses `sudo` atau `root`.
 - Docker Engine dan Docker Compose plugin [3].
 - CPU dengan dukungan instruksi SSE4.2 [1].
 - Domain / Subdomain aktif (`kavita.fatihzar.my.id`).
-- Port 80 (HTTP) dan 443 (HTTPS) terbuka pada firewall VPS untuk akses web publik.
+- Operating System Linux (Bare-Metal / VPS Ubuntu/Mint)
+- Docker & Docker Compose Plugin
+- Service Daemon `cloudflared` terinstall
+- Domain terhubung ke Cloudflare Zero Trust
 
 #### Proses Instalasi :
 
-1. **Login ke server VPS via SSH**
+1. **Login ke Dedicated Laptop Server via SSH**
    
    Akses terminal server VPS dari komputer lokal menggunakan SSH. Untuk pengguna Windows, koneksi dapat dilakukan langsung melalui **PowerShell**, **Windows Terminal**, maupun aplikasi pihak ketiga seperti **PuTTY**.
 
    ```bash
-   ssh root@ip-server-vps
+   ssh fatihzaraj@192.168.1.50
    ```
 2. **Persiapan direktori kerja dan pengecekan port**
-   Pastikan port internal `5000` belum digunakan oleh layanan lain, kemudian buat direktori untuk proyek Kavita beserta folder penyimpanan berkas bacaan (`manga`):
+   Pastikan port internal `50000` belum digunakan oleh layanan lain, kemudian buat direktori untuk proyek Kavita beserta folder penyimpanan berkas bacaan (`manga`):
 
    ```bash
-   ss -tln | grep ':5000' || echo "Port 5000 kosong"
-   mkdir -p ~/kavita/manga && cd ~/kavita
+   ss -tln | grep ':50000' || echo "Port 50000 kosong"
+   mkdir -p ~/kavita/manga  
+   cd ~/kavita
    ```
 3. **Pembuatan file konfigurasi `compose.yaml`**
    Susun berkas konfigurasi *Docker Compose* untuk mendefinisikan *container* Kavita, pemetaan folder (*volumes*), zona waktu, dan port internal:
@@ -91,13 +92,13 @@ flowchart LR
        image: jvmilazz0/kavita:latest
        container_name: kavita
        volumes:
-         - ./manga:/manga
-         - kavita-config:/kavita/config
+       - ./config:/kavita/config
+       - /home/fatihzaraj/manga:/manga
        environment:
          - TZ=Asia/Jakarta
        ports:
-         - "5000:5000"
-       restart: unless-stopped
+         - "50000:5000"
+       restart: always
 
    volumes:
      kavita-config:
@@ -109,11 +110,11 @@ flowchart LR
 
 | Baris | Fungsi |
 |---|---|
-| `./manga:/manga` | Memetakan folder bacaan lokal VPS ke direktori `/manga` di dalam *container* |
-| `kavita-config:/kavita/config` | *Docker volume* persisten untuk menyimpan database SQLite, cache, dan data akun [1] |
+| `/home/fatihzaraj/manga:/manga` | Memetakan folder bacaan lokal VPS ke direktori `/manga` di dalam *container* |
+| `./config:/kavita/config` | *Docker volume* persisten untuk menyimpan database SQLite, cache, dan data akun [1] |
 | `TZ=Asia/Jakarta` | Menetapkan zona waktu sistem di dalam *container* sesuai WIB |
-| `"5000:5000"` | Memetakan *port* 5000 pada host VPS ke *port* 5000 di dalam *container* |
-| `restart: unless-stopped` | Memastikan *container* menyala otomatis kembali saat VPS di-*reboot* |
+| `"50000:5000"` | Memetakan *port* 50000 pada host ke *port* 5000 di dalam *container* |
+| `restart: always` | Memastikan *container* menyala otomatis kembali saat VPS di-*reboot* |
 
 </details>
 
@@ -133,7 +134,9 @@ flowchart LR
 
    ```bash
    sudo docker compose ps
-   curl -sI http://localhost:5000 | head -n 1
+
+   # Karena di konfigurasi dipetakan ke port 50000, cek port host tersebut:
+   curl -sI http://localhost:50000 | head -n 1
    ```
 
    Pada peluncuran pertama, status container akan menampilkan `health: starting` selama kurang lebih 1–2 menit karena sistem sedang menginisialisasi skema database awal.
@@ -149,51 +152,50 @@ Tanda Kavita siap ada di log: `Now listening on: [http://[::]:5000](http://[::]:
 
 </details>
 
-5. **Konfigurasi Reverse Proxy & SSL (Ekspos ke Internet)**
-   Agar *container* Kavita yang berjalan di `localhost:5000` dapat diakses dengan aman oleh publik melalui domain `[https://kavita.fatihzar.my.id/](https://kavita.fatihzar.my.id/)`, dipasang *Reverse Proxy* menggunakan Nginx serta enkripsi sertifikat SSL gratis dari Let's Encrypt:
+5. **Konfigurasi Akses Publik & SSL via Cloudflare Tunnel**
+   Agar container Kavita yang berjalan di port lokal 50000 dapat diakses dengan aman oleh publik melalui domain https://kavita.fatihzar.my.id/, kita tidak menggunakan Nginx/Certbot, melainkan Cloudflare Tunnel (cloudflared). Cara ini lebih aman karena tidak perlu membuka port (port forwarding) di router.
 
-   1. **Instalasi Nginx dan Certbot:**
+   1. **Instalasi Daemon cloudflared di Server:**
       ```bash
-      sudo apt-get update
-      sudo apt-get install -y nginx certbot python3-certbot-nginx
+      # Tambahkan GPG key Cloudflare
+      sudo mkdir -p /etc/apt/keyrings
+      curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg | sudo tee /etc/apt/keyrings/cloudflare-main.gpg >/dev/null
+
+      # Tambahkan repository Cloudflare
+      echo "deb [signed-by=/etc/apt/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared jammy main" | sudo tee /etc/apt/sources.list.d/cloudflared.list
+
+      # Update & install cloudflared
+      sudo apt update && sudo apt install cloudflared -y
       ```
 
-   2. **Buat file konfigurasi Virtual Host Nginx:**
-      ```bash
-      sudo nano /etc/nginx/sites-available/kavita
+   2. **Konfigurasi via Dashboard Cloudflare Zero Trust:**
+      * Buka dashboard **Cloudflare Zero Trust** (`one.dash.cloudflare.com`) di browser.
+
+      * Navigasi ke **Networks** > **Tunnels**, lalu pilih tunnel yang sudah dibuat dan klik **Edit**.
+
+      * Pada tab **Public Hostname**, tambahkan konfigurasi berikut:
+
+        * **Subdomain:** `kavita`
+
+        * **Domain:** `fatihzar.my.id`
+
+        * **Service Type:** Pilih `HTTP` dan isi URL dengan `localhost:50000`
+
+      * Simpan konfigurasi.
+
+   3. **Verifikasi Service Tunnel di Laptop Server:**
+      *(Jika menggunakan tunnel baru, jalankan perintah instalasi token yang muncul di dashboard Cloudflare).*
+
+      Pastikan daemon `cloudflared` sudah terpasang dan berjalan di latar belakang server:
+
       ```
-      Tambahkan konfigurasi *proxy pass* berikut:
-      ```nginx
-      server {
-          server_name kavita.fatihzar.my.id;
-
-          location / {
-              proxy_pass http://127.0.0.1:5000;
-              proxy_set_header Host $host;
-              proxy_set_header X-Real-IP $remote_addr;
-              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $scheme;
-
-              # Dukungan WebSocket untuk pembaca Kavita
-              proxy_http_version 1.1;
-              proxy_set_header Upgrade $http_upgrade;
-              proxy_set_header Connection "upgrade";
-          }
-      }
-      ```
-
-   3. **Aktifkan konfigurasi dan reload Nginx:**
-      ```bash
-      sudo ln -s /etc/nginx/sites-available/kavita /etc/nginx/sites-enabled/
-      sudo nginx -t
-      sudo systemctl reload nginx
+      sudo systemctl enable --now cloudflared
+      sudo systemctl status cloudflared
+      
       ```
 
-   4. **Pasang sertifikat HTTPS (SSL) otomatis:**
-      ```bash
-      sudo certbot --nginx -d kavita.fatihzar.my.id
-      ```
-      *(Sistem Certbot akan otomatis memperbarui file Nginx untuk mengaktifkan enkripsi HTTPS pada port 443).*
+      *(Pastikan statusnya menunjukkan `active (running)` agar lalu lintas dari domain dapat diteruskan ke container).*
+
 
 6. **Akses publik dan inisialisasi akun Administrator**
    Buka peramban (*web browser*) di komputer atau ponsel pintar, lalu akses tautan publik:
@@ -245,20 +247,19 @@ Kavita tidak menggunakan arsitektur *plugin* atau ekstensi modular layaknya CMS 
 # Maintenance
 [`^ kembali ke atas ^`](#)
 
-Seluruh data vital Kavita tersimpan di dalam *Docker volume* persisten `kavita-config` (berisi database SQLite dan akun) serta direktori `~/kavita/manga` (berkas komik/buku). Menjaga pencadangan (*backup*) rutin sangat penting untuk mencegah kehilangan data sistem.
+Seluruh data vital Kavita tersimpan di dalam folder lokal `~/kavita/config` (berisi database SQLite dan pengaturan akun) serta direktori `~/manga` (berkas komik/buku). Menjaga pencadangan (*backup*) rutin sangat penting untuk mencegah kehilangan data sistem.
 
 #### Backup Manual
-Jalankan kontainer sementara berbasis Alpine Linux untuk mengompresi volume data Kavita menjadi arsip `.tar.gz`:
+Karena konfigurasi disimpan di folder lokal biasa, kamu cukup mengompresi folder tersebut menjadi arsip `.tar.gz` menggunakan perintah bawaan Linux:
 ```bash
 mkdir -p ~/backup
-sudo docker run --rm -v kavita_kavita-config:/data -v ~/backup:/backup alpine tar czf /backup/kavita-config-$(date +%F).tar.gz -C /data .
-```
+tar -czvf ~/backup/kavita-config-$(date +%F).tar.gz -C ~/kavita config
 
 #### Otomatisasi Backup Terjadwal (Cron Job)
 Buka konfigurasi cron server dengan menjalankan `sudo crontab -e`, kemudian tambahkan baris penjadwalan berkala:
 ```cron
-0 2 * * 0 docker run --rm -v kavita_kavita-config:/data -v /root/backup:/backup alpine tar czf /backup/kavita-config-$(date +\%F).tar.gz -C /data .
-30 2 * * 0 find /root/backup -name 'kavita-config-*.tar.gz' -mtime +30 -delete
+0 2 * * 0 tar -czf /home/fatihzaraj/backup/kavita-config-$(date +\%F).tar.gz -C /home/fatihzaraj/kavita config
+30 2 * * 0 find /home/fatihzaraj/backup -name 'kavita-config-*.tar.gz' -mtime +30 -delete
 ```
 *Keterangan: Perintah cron di atas akan membuat arsip cadangan otomatis setiap hari Minggu pukul 02.00 dini hari, serta menghapus arsip cadangan yang telah berusia lebih dari 30 hari secara berkala pada pukul 02.30.*
 
@@ -270,7 +271,7 @@ Jika terjadi kerusakan database atau server dipindahkan ke VPS baru, hentikan ko
 ```bash
 cd ~/kavita
 sudo docker compose stop
-sudo docker run --rm -v kavita_kavita-config:/data -v ~/backup:/backup alpine sh -c "cd /data && tar xzf /backup/NAMA-FILE-BACKUP.tar.gz"
+tar -xzvf ~/backup/NAMA-FILE-BACKUP.tar.gz -C ~/kavita
 sudo docker compose start
 ```
 
