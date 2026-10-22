@@ -414,8 +414,6 @@ Diambil dengan `sudo docker stats --no-stream`, diulang tiga kali lalu dirata-ra
 | Saat scan library | | |
 | Saat membaca file | | |
 
-<img width="440" height="135" alt="P8_Zidny Ilman Nafi_M0403241068" src="https://github.com/user-attachments/assets/08bf0e7b-e8d2-4093-8e0f-15884b836125" />
-
 
 # Pembahasan
 [`^ kembali ke atas ^`](#)
