@@ -207,17 +207,17 @@ Tanda Kavita siap ada di log: `Now listening on: [http://[::]:5000](http://[::]:
 # Konfigurasi
 [`^ kembali ke atas ^`](#)
 
-Pengaturan tambahan pada sistem Kavita dilakukan langsung melalui berkas `compose.yaml` di dalam direktori `~/kavita` pada server VPS. Setiap kali berkas tersebut diubah, terapkan pembaruan konfigurasi dengan menjalankan:
+Pengaturan tambahan pada sistem Kavita dilakukan langsung melalui berkas `compose.yaml` di dalam direktori `~/kavita` pada laptop server. Setiap kali berkas tersebut diubah, terapkan pembaruan konfigurasi dengan menjalankan:
 
 ```bash
-sudo docker compose up -d
+docker compose up -d
 ```
 
 | Kebutuhan Pengaturan | Langkah / Konfigurasi |
 |---|---|
-| Mengubah Port Internal | Ubah pemetaan port `"5000:5000"` menjadi misalnya `"5001:5000"` (pastikan *reverse proxy* Nginx juga diarahkan ke port baru) |
+| Mengubah Port Internal | Ubah pemetaan port `"50000:5000"` menjadi misalnya `"50001:5000"` (pastikan URL pada konfigurasi Cloudflare Zero Trust juga diubah ke localhost:50001) |
 | Menyesuaikan Zona Waktu | Perbarui nilai variabel environment `TZ` (misalnya `TZ=Asia/Jakarta`) |
-| Menambah Direktori Bacaan | Tambahkan baris pemetaan direktori pada blok `volumes`, contoh: `- /data/komik:/komik` |
+| Menambah Direktori Bacaan | Tambahkan baris pemetaan direktori pada blok volumes, contoh: - /home/fatihzaraj/komik_baru:/komik_baru |
 | Membatasi Penggunaan Memori | Tambahkan parameter `mem_limit: 1g` di bawah layanan `kavita` untuk membatasi konsumsi RAM di VPS |
 
 Kavita memindai berkas secara langsung dari sistem berkas server lokal, bukan melalui pengunggahan via peramban web (*web upload*), sehingga tidak diperlukan pengaturan batasan ukuran unggah (*upload limit*) pada web server.
