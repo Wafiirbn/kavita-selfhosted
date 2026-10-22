@@ -201,3 +201,168 @@ Tanda Kavita siap ada di log: `Now listening on: [http://[::]:5000](http://[::]:
    👉 **[https://kavita.fatihzar.my.id/](https://kavita.fatihzar.my.id/)**
 
    Pada halaman sambutan pertama, daftarkan akun administrator sistem (isi *Username*, *Email*, dan *Password*), kemudian klik tombol **Register** untuk masuk ke antarmuka utama Kavita (lihat bagian [Cara Pemakaian](#cara-pemakaian)).
+
+# Konfigurasi
+[`^ kembali ke atas ^`](#)
+
+Pengaturan tambahan pada sistem Kavita dilakukan langsung melalui berkas `compose.yaml` di dalam direktori `~/kavita` pada server VPS. Setiap kali berkas tersebut diubah, terapkan pembaruan konfigurasi dengan menjalankan:
+
+```bash
+sudo docker compose up -d
+```
+
+| Kebutuhan Pengaturan | Langkah / Konfigurasi |
+|---|---|
+| Mengubah Port Internal | Ubah pemetaan port `"5000:5000"` menjadi misalnya `"5001:5000"` (pastikan *reverse proxy* Nginx juga diarahkan ke port baru) |
+| Menyesuaikan Zona Waktu | Perbarui nilai variabel environment `TZ` (misalnya `TZ=Asia/Jakarta`) |
+| Menambah Direktori Bacaan | Tambahkan baris pemetaan direktori pada blok `volumes`, contoh: `- /data/komik:/komik` |
+| Membatasi Penggunaan Memori | Tambahkan parameter `mem_limit: 1g` di bawah layanan `kavita` untuk membatasi konsumsi RAM di VPS |
+
+Kavita memindai berkas secara langsung dari sistem berkas server lokal, bukan melalui pengunggahan via peramban web (*web upload*), sehingga tidak diperlukan pengaturan batasan ukuran unggah (*upload limit*) pada web server.
+
+Pemantauan penggunaan sumber daya server VPS secara waktu nyata (*real-time*) dapat dilakukan menggunakan perintah:
+```bash
+sudo docker stats --no-stream
+```
+
+
+# Plugin untuk fungsi tambahan
+[`^ kembali ke atas ^`](#)
+
+Kavita tidak menggunakan arsitektur *plugin* atau ekstensi modular layaknya CMS tradisional (seperti WordPress atau PrestaShop). Seluruh kapabilitas tambahan disediakan melalui fitur bawaan (*built-in*) serta integrasi API eksternal:
+
+| Fitur Tambahan | Penjelasan & Fungsi |
+|---|---|
+| **Kavita+** | Layanan terintegrasi untuk sinkronisasi metadata komik otomatis, ulasan, rekomendasi pembaca, dan *scrobbling* data bacaan [2] |
+| **Manajemen Pengguna & OIDC** | Pengaturan hak akses berbasis peran (*role-based access*), pembatasan rating usia (*age restriction*), serta autentikasi pihak ketiga via OpenID Connect (OIDC) [2] |
+| **Theme Repository** | Kustomisasi antarmuka aplikasi melalui repositori tema visual komunitas |
+| **Pengelompokan Seri** | Pengorganisasian berkas ke dalam *Collections*, *Want to Read*, serta impor daftar bacaan eksternal berbasis format `.cbl` (*ComicBookList*) |
+| **Anotasi & Bookmark** | Fitur penanda halaman, sorotan teks (*highlight*), dan pembuatan catatan bacaan khusus berkas EPUB |
+| **Protokol OPDS** | Dukungan *Open Publication Distribution System* (OPDS) untuk menghubungkan Kavita ke aplikasi pembaca seluler (seperti Mihon, Panels, atau Chunky) tanpa membuka browser |
+
+
+
+# Maintenance
+[`^ kembali ke atas ^`](#)
+
+Seluruh data vital Kavita tersimpan di dalam *Docker volume* persisten `kavita-config` (berisi database SQLite dan akun) serta direktori `~/kavita/manga` (berkas komik/buku). Menjaga pencadangan (*backup*) rutin sangat penting untuk mencegah kehilangan data sistem.
+
+#### Backup Manual
+Jalankan kontainer sementara berbasis Alpine Linux untuk mengompresi volume data Kavita menjadi arsip `.tar.gz`:
+```bash
+mkdir -p ~/backup
+sudo docker run --rm -v kavita_kavita-config:/data -v ~/backup:/backup alpine tar czf /backup/kavita-config-$(date +%F).tar.gz -C /data .
+```
+
+#### Otomatisasi Backup Terjadwal (Cron Job)
+Buka konfigurasi cron server dengan menjalankan `sudo crontab -e`, kemudian tambahkan baris penjadwalan berkala:
+```cron
+0 2 * * 0 docker run --rm -v kavita_kavita-config:/data -v /root/backup:/backup alpine tar czf /backup/kavita-config-$(date +\%F).tar.gz -C /data .
+30 2 * * 0 find /root/backup -name 'kavita-config-*.tar.gz' -mtime +30 -delete
+```
+*Keterangan: Perintah cron di atas akan membuat arsip cadangan otomatis setiap hari Minggu pukul 02.00 dini hari, serta menghapus arsip cadangan yang telah berusia lebih dari 30 hari secara berkala pada pukul 02.30.*
+
+<details>
+<summary>Cara Pemulihan Data (Restore Data)</summary>
+
+Jika terjadi kerusakan database atau server dipindahkan ke VPS baru, hentikan kontainer Kavita, pulihkan isi volume dari file arsip cadangan, lalu jalankan kembali layanan:
+
+```bash
+cd ~/kavita
+sudo docker compose stop
+sudo docker run --rm -v kavita_kavita-config:/data -v ~/backup:/backup alpine sh -c "cd /data && tar xzf /backup/NAMA-FILE-BACKUP.tar.gz"
+sudo docker compose start
+```
+
+</details>
+
+#### Manajemen Layanan Rutin
+Seluruh perintah pemeliharaan dijalankan di dalam direktori proyek `~/kavita`:
+```bash
+sudo docker compose ps               # Memeriksa status kesehatan kontainer
+sudo docker compose logs --tail 50   # Memantau 50 baris log aktivitas terkini
+sudo docker compose restart          # Memulai ulang layanan kontainer
+sudo docker compose stop             # Menghentikan layanan sementara (data tetap aman)
+sudo docker compose start            # Menyalakan kembali kontainer
+```
+
+> **Peringatan Keamanan:** Jangan pernah mengeksekusi perintah `docker compose down -v`. Opsi flag `-v` akan menghapus seluruh volume penyimpanan persisten sehingga seluruh akun pengguna, database, dan metadata *library* akan terhapus permanen.
+
+
+
+# Otomatisasi
+[`^ kembali ke atas ^`](#)
+
+Seluruh tahapan pemasangan dependensi Docker, pembuatan direktori proyek, penyusunan konfigurasi `compose.yaml`, hingga peluncuran kontainer di server VPS dapat dieksekusi secara otomatis menggunakan skrip instalasi tunggal [setup-kavita.sh](setup-kavita.sh).
+
+Jalankan skrip otomasi pada server VPS dengan perintah:
+```bash
+bash setup-kavita.sh
+```
+
+<details>
+<summary>Lihat isi lengkap setup-kavita.sh (Versi VPS Production)</summary>
+
+```bash
+#!/bin/bash
+# Skrip Otomasi Instalasi Server Kavita (Docker di Ubuntu VPS)
+# Penggunaan: bash setup-kavita.sh
+
+set -e
+
+PORT=5000
+FOLDER=~/kavita
+
+echo "==> 1. Memperbarui repositori dan memasang dependensi inti..."
+sudo apt-get update
+sudo apt-get install -y ca-certificates curl gnupg
+
+# Pemasangan Docker Engine resmi
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL [https://download.docker.com/linux/ubuntu/gpg](https://download.docker.com/linux/ubuntu/gpg) -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] [https://download.docker.com/linux/ubuntu](https://download.docker.com/linux/ubuntu) $(. /etc/os-release && echo ${UBUNTU_CODENAME:-$VERSION_CODENAME}) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo systemctl enable --now docker
+
+echo "==> 2. Menyiapkan direktori penyimpanan Kavita..."
+mkdir -p $FOLDER/manga
+cd $FOLDER
+
+# Validasi ketersediaan port
+if ss -tln | grep -q ":$PORT " && ! sudo docker ps | grep -q kavita; then
+  echo "Error: Port $PORT telah digunakan oleh proses lain."
+  exit 1
+fi
+
+echo "==> 3. Membuat file konfigurasi compose.yaml..."
+if [ ! -f compose.yaml ]; then
+cat > compose.yaml <<COMPOSE "="=" "$PORT:5000" "Berkas && - -q ./manga:/manga COMPOSE TZ="Asia/Jakarta" berhasil compose compose.yaml config container_name: divalidasi." docker echo environment: fi image: jvmilazz0/kavita:latest kavita kavita-config: kavita-config:/kavita/config kavita: ports: restart: services: sudo unless-stopped volumes:> 4. Mengunduh image dan menyalakan kontainer..."
+sudo docker compose pull
+sudo docker compose up -d
+
+echo "==> 5. Menunggu inisialisasi awal server Kavita..."
+for i in $(seq 1 36); do
+  if curl -fs -o /dev/null http://localhost:$PORT; then
+    echo "Server Kavita berhasil merespons permintaan!"
+    break
+  fi
+  sleep 5
+done
+
+sudo docker compose ps
+
+echo ""
+echo "=========================================================="
+echo "Instalasi Berhasil!"
+echo "Status Internal : Berjalan pada http://localhost:$PORT"
+echo "Direktori Berkas: $FOLDER/manga (Mapping kontainer: /manga)"
+echo ""
+echo "Langkah Lanjutan:"
+echo "1. Konfigurasikan Reverse Proxy (Nginx) & SSL untuk domain publik."
+echo "2. Akses aplikasi secara publik via [https://kavita.fatihzar.my.id/](https://kavita.fatihzar.my.id/)."
+echo "=========================================================="
+```
+
+</details>
