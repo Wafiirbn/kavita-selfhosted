@@ -1,3 +1,7 @@
+<p align="center">
+  <img width="1024" height="478" alt="Unknown" src="https://github.com/user-attachments/assets/9e84bf54-140b-4e8d-9cc0-3c0b88397cdb" />
+</p>
+
 <h1 align="center">Kavita</h1>
 <p align="center">Perpustakaan manga, komik, dan buku digital di server sendiri</p>
 
@@ -11,9 +15,6 @@
 [Sekilas Tentang](#sekilas-tentang) | [Instalasi](#instalasi) | [Konfigurasi](#konfigurasi) | [Plugin](#plugin-untuk-fungsi-tambahan) | [Maintenance](#maintenance) | [Otomatisasi](#otomatisasi) | [Cara Pemakaian](#cara-pemakaian) | [Pembahasan](#pembahasan) | [Referensi](#referensi)
 
 > Angka dalam kurung siku, misalnya [2], merujuk ke daftar [Referensi](#referensi).
-> Bagian dengan segitiga di sisi kiri (misalnya "Penjelasan tiap baris") bisa diklik untuk dibuka.
-> Semua blok perintah bisa disalin langsung dengan tombol *copy* tanpa tanda `$`.
-
 
 
 # Sekilas Tentang
@@ -23,327 +24,354 @@
 
 | Item | Keterangan |
 |---|---|
-| Situs dan dokumentasi | https://wiki.kavitareader.com [1] |
-| Kode sumber | https://github.com/Kareadita/Kavita [2] |
+| Situs dan dokumentasi | [https://wiki.kavitareader.com](https://wiki.kavitareader.com) [1] |
+| Kode sumber | [https://github.com/Kareadita/Kavita](https://github.com/Kareadita/Kavita) [2] |
 | Lisensi | GNU GPL v3, gratis [2] |
-| Versi yang dipasang | v0.9.1.4 (terlihat di log container) |
+| Versi yang dipasang | v0.9.1.4 |
 | Catatan pengembang | Masih beta sampai rilis 1.0.0, data bisa hilang walau tim berusaha mencegahnya [2] |
 
-Lingkungan praktik:
+Lingkungan praktik (Laptop Server):
 
 | Item | Keterangan |
 |---|---|
-| Host | Windows 11 Home, RAM 7,9 GB |
-| Virtualisasi | VirtualBox 7.2.16 |
-| VM | Ubuntu 26.04.1 LTS Desktop, 8 core, RAM 4,3 GB, disk 25 GB |
-| Jaringan VM | NAT, IP `10.0.2.15` |
-| Docker | Engine 29.9.0, Compose v5.6.0 |
+| Server / Hosting | Dedicated Laptop Server (Linux Mint / Ubuntu-based Bare-Metal) |
+| Akses Server | SSH Remote Terminal (ssh fatihzaraj@192.168.1.50) |
+| Docker Engine | Docker Engine & Docker Compose Plugin (v2+) |
+| Docker Image | jvmilazz0/kavita:latest |
+| Arsitektur Jaringan | Host Port 50000 -> Container Port 5000 -> Cloudflare Tunnel Outbound -> Domain HTTPS |
+| Enkripsi SSL/TLS | Automatic Cloudflare Edge Certificate (TLS 1.3) |
+| Domain Publik | [https://kavita.fatihzar.my.id/](https://kavita.fatihzar.my.id/) |
 | Image | `jvmilazz0/kavita:latest` |
 
-Alur akses dari Windows ke Kavita (diagram ini dirender otomatis oleh GitHub):
+Alur akses pengguna ke server Kavita:
 
 ```mermaid
 flowchart LR
-    B["Browser Windows<br/>localhost:5000"] -->|Port Forwarding NAT| V["VM Ubuntu<br/>10.0.2.15:5000"]
-    V --> D["Container kavita<br/>(Docker)"]
-    D --> F["Folder ~/kavita/manga<br/>file bacaan"]
-    D --> C["Volume kavita-config<br/>akun dan pengaturan"]
+    U["Pengguna / Browser"] -->|HTTPS / Port 443| D["Domain kavita.fatihzar.my.id"]
+    D -->|Cloudflare Tunnel / Outbound| S["Server Host (Port 50000)"]
+    S -->|Docker Port Mapping| C["Container Kavita (Docker Port 5000)"]
+    C -->|Volume Mount| F["Folder ~/manga"]
+    C -->|Volume Mount| V["Volume ./config"]
+
 ```
-
-
-
 # Instalasi
 [`^ kembali ke atas ^`](#)
 
 #### Kebutuhan Sistem :
-- Ubuntu dengan akses `sudo`.
 - Docker Engine dan Docker Compose plugin [3].
-- CPU yang mendukung SSE4.2 [1].
-- Port 5000 belum dipakai program lain.
-- Menurut dokumentasi, tidak ada prasyarat lain seperti database atau web server terpisah [1].
+- CPU dengan dukungan instruksi SSE4.2 [1].
+- Domain / Subdomain aktif (`kavita.fatihzar.my.id`).
+- Operating System Linux (Bare-Metal / Laptop Server Linux Mint)
+- Docker & Docker Compose Plugin
+- Service Daemon `cloudflared` terinstall
+- Domain terhubung ke Cloudflare Zero Trust
 
 #### Proses Instalasi :
 
-##### Langkah 1. Cek port 5000
-```bash
-ss -tln | grep ':5000' || echo "Port 5000 kosong"
-```
-Hasil di VM praktik: `Port 5000 kosong`.
+1. **Login ke Dedicated Laptop Server via SSH**
+   
+   Akses terminal server dari komputer lokal menggunakan SSH. Untuk pengguna Windows, koneksi dapat dilakukan langsung melalui **PowerShell**, **Windows Terminal**, maupun aplikasi pihak ketiga seperti **PuTTY**.
 
-##### Langkah 2. Buat folder proyek dan folder bacaan
-```bash
-mkdir -p ~/kavita/manga && cd ~/kavita
-```
+   ```bash
+   ssh fatihzaraj@192.168.1.50
+   ```
+2. **Persiapan direktori kerja dan pengecekan port**
+   
+   Pastikan port internal `50000` belum digunakan oleh layanan lain, kemudian buat direktori untuk proyek Kavita beserta folder penyimpanan berkas bacaan (`manga`):
 
-##### Langkah 3. Buat file `compose.yaml`
-```bash
-cat > compose.yaml <<'EOF'
-services:
-  kavita:
-    image: jvmilazz0/kavita:latest
-    container_name: kavita
-    volumes:
-      - ./manga:/manga
-      - kavita-config:/kavita/config
-    environment:
-      - TZ=Asia/Jakarta
-    ports:
-      - "5000:5000"
-    restart: unless-stopped
+   ```bash
+   ss -tln | grep ':50000' || echo "Port 50000 kosong"
+   mkdir -p ~/kavita/manga  
+   cd ~/kavita
+   ```
+3. **Pembuatan file konfigurasi `compose.yaml`**
+   Susun berkas konfigurasi *Docker Compose* untuk mendefinisikan *container* Kavita, pemetaan folder (*volumes*), zona waktu, dan port internal:
 
-volumes:
-  kavita-config:
-EOF
-```
+   ```bash
+   cat > compose.yaml <<'EOF'
+   services:
+     kavita:
+       image: jvmilazz0/kavita:latest
+       container_name: kavita
+       volumes:
+       - ./config:/kavita/config
+       - /home/fatihzaraj/manga:/manga
+       environment:
+         - TZ=Asia/Jakarta
+       ports:
+         - "50000:5000"
+       restart: always
+
+   volumes:
+     kavita-config:
+   EOF
+   ```
 
 <details>
-<summary>Penjelasan tiap baris penting</summary>
+<summary>Penjelasan konfigurasi tiap baris</summary>
 
 | Baris | Fungsi |
 |---|---|
-| `./manga:/manga` | Folder bacaan di Ubuntu dipasang ke `/manga` di dalam container |
-| `kavita-config:/kavita/config` | Docker volume untuk akun, pengaturan, dan database. Path ini tidak boleh diubah [1] |
-| `TZ=Asia/Jakarta` | Zona waktu container |
-| `"5000:5000"` | Port di Ubuntu : port di container |
-| `restart: unless-stopped` | Kavita menyala otomatis setelah Ubuntu restart |
+| `/home/fatihzaraj/manga:/manga` | Memetakan folder bacaan fisik di laptop server ke direktori `/manga` di dalam *container* |
+| `./config:/kavita/config` | *Docker volume* persisten untuk menyimpan database SQLite, cache, dan data akun [1] |
+| `TZ=Asia/Jakarta` | Menetapkan zona waktu sistem di dalam *container* sesuai WIB |
+| `"50000:5000"` | Memetakan *port* 50000 pada host ke *port* 5000 di dalam *container* |
+| `restart: always` | Memastikan *container* menyala otomatis kembali saat Laptop Server di-*reboot* |
 
 </details>
 
-##### Langkah 4. Validasi isi file
-```bash
-sudo docker compose config -q && echo "compose.yaml VALID"
-```
-Hasil: `compose.yaml VALID`.
+4. **Validasi, unduh image, dan jalankan container**
+   
+   Lakukan verifikasi sintaks file `compose.yaml`, unduh *image* resmi dari Docker Hub, lalu jalankan layanan di latar belakang (*detached mode*):
 
-##### Langkah 5. Unduh image dan jalankan di latar belakang
-```bash
-sudo docker compose pull
-sudo docker compose up -d
-```
+   ```bash
+   # Validasi sintaks
+   sudo docker compose config -q && echo "compose.yaml VALID"
 
-##### Langkah 6. Cek status dan tes dari dalam Ubuntu
-```bash
-sudo docker compose ps
-curl -sI http://localhost:5000 | head -n 1
-```
-Hasil di VM praktik: container `Up`, port 5000 `LISTEN`, dan `HTTP/1.1 200 OK`. Status kesehatan masih `health: starting` sekitar satu menit pada start pertama, karena Kavita menyiapkan database dulu.
+   # Unduh image dan jalankan container
+   sudo docker compose pull
+   sudo docker compose up -d
+   ```
+
+   Verifikasi bahwa *container* telah berjalan dan merespons permintaan HTTP secara lokal di dalam server:
+
+   ```bash
+   sudo docker compose ps
+
+   # Karena di konfigurasi dipetakan ke port 50000, cek port host tersebut:
+   curl -sI http://localhost:50000 | head -n 1
+   ```
+
+   Pada peluncuran pertama, status container akan menampilkan `health: starting` selama kurang lebih 1–2 menit karena sistem sedang menginisialisasi skema database awal.
 
 <details>
 <summary>Kenapa log penuh kata "Fatal" dan "Error"? (bukan masalah)</summary>
 
 Log start pertama memuat banyak baris berlevel `Fatal` dan `Error`, padahal aplikasi berjalan normal:
-
 - Baris `[Fatal] ... migration ... This is not an error` adalah pesan migrasi database. Kavita menulisnya dengan level `Fatal`, dan teksnya sendiri menyatakan bukan error.
 - Baris `Unable to copy ... github_*.json` dan `DirectoryNotFoundException ... pr_cache` muncul karena file cache versi lama belum ada pada instalasi baru. Kavita menandainya `Warning` lalu melanjutkan start.
 
-Tanda Kavita siap ada di log: `Now listening on: http://[::]:5000` dan `Application started`.
+Tanda Kavita siap ada di log: `Now listening on: [http://[::]:5000](http://[::]:5000)` dan `Application started`.
 
 </details>
 
-##### Langkah 7. Buat aturan Port Forwarding di VirtualBox (di Windows, bukan di Ubuntu)
+5. **Konfigurasi Akses Publik & SSL via Cloudflare Tunnel**
 
-Buka *Settings* VM, lalu *Network*, tab *Adapter 1* (harus NAT), klik *Advanced*, lalu *Port Forwarding*. Tambah aturan:
+   Agar container Kavita yang berjalan di port lokal 50000 dapat diakses dengan aman oleh publik melalui domain https://kavita.fatihzar.my.id/, kita tidak menggunakan Nginx/Certbot, melainkan Cloudflare Tunnel (cloudflared). Cara ini lebih aman karena tidak perlu membuka port (port forwarding) di router.
 
-| Kolom | Isi |
-|---|---|
-| Name | `kavita` |
-| Protocol | `TCP` |
-| Host IP | `127.0.0.1` |
-| Host Port | `5000` |
-| Guest IP | `10.0.2.15` |
-| Guest Port | `5000` |
+   1. **Instalasi Daemon cloudflared di Server:**
+      ```bash
+      # Tambahkan GPG key Cloudflare
+      sudo mkdir -p /etc/apt/keyrings
+      curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg | sudo tee /etc/apt/keyrings/cloudflare-main.gpg >/dev/null
 
-![Aturan Port Forwarding](screenshots/00-port-forwarding.png)
+      # Tambahkan repository Cloudflare
+      echo "deb [signed-by=/etc/apt/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared jammy main" | sudo tee /etc/apt/sources.list.d/cloudflared.list
 
-Jika Host Port 5000 sudah dipakai program lain di Windows, ganti jadi `5001` dan buka `http://localhost:5001`.
+      # Update & install cloudflared
+      sudo apt update && sudo apt install cloudflared -y
+      ```
 
-##### Langkah 8. Buka dari browser Windows
+   2. **Konfigurasi via Dashboard Cloudflare Zero Trust:**
+      * Buka dashboard **Cloudflare Zero Trust** (`one.dash.cloudflare.com`) di browser.
 
-Buka `http://localhost:5000`, lalu buat akun admin pertama (lihat [Cara Pemakaian](#cara-pemakaian)).
+      * Navigasi ke **Networks** > **Tunnels**, lalu pilih tunnel yang sudah dibuat dan klik **Edit**.
+
+      * Pada tab **Public Hostname**, tambahkan konfigurasi berikut:
+
+        * **Subdomain:** `kavita`
+
+        * **Domain:** `fatihzar.my.id`
+
+        * **Service Type:** Pilih `HTTP` dan isi URL dengan `localhost:50000`
+
+      * Simpan konfigurasi.
+
+   3. **Verifikasi Service Tunnel di Laptop Server:**
+      *(Jika menggunakan tunnel baru, jalankan perintah instalasi token yang muncul di dashboard Cloudflare).*
+
+      Pastikan daemon `cloudflared` sudah terpasang dan berjalan di latar belakang server:
+
+      ```
+      sudo systemctl enable --now cloudflared
+      sudo systemctl status cloudflared
+      
+      ```
+
+      *(Pastikan statusnya menunjukkan `active (running)` agar lalu lintas dari domain dapat diteruskan ke container).*
 
 
+6. **Akses publik dan inisialisasi akun Administrator**
+ 
+   Buka peramban (*web browser*) di komputer atau ponsel pintar, lalu akses tautan publik:
+
+   👉 **[https://kavita.fatihzar.my.id/](https://kavita.fatihzar.my.id/)**
+
+   Pada halaman sambutan pertama, daftarkan akun administrator sistem (isi *Username*, *Email*, dan *Password*), kemudian klik tombol **Register** untuk masuk ke antarmuka utama Kavita (lihat bagian [Cara Pemakaian](#cara-pemakaian)).
 
 # Konfigurasi
 [`^ kembali ke atas ^`](#)
 
-Pengaturan tambahan dilakukan lewat `compose.yaml`. Setelah mengubah file, terapkan dengan `sudo docker compose up -d`.
+Pengaturan tambahan pada sistem Kavita dilakukan langsung melalui berkas `compose.yaml` di dalam direktori `~/kavita` pada laptop server. Setiap kali berkas tersebut diubah, terapkan pembaruan konfigurasi dengan menjalankan:
 
-| Kebutuhan | Cara |
+```bash
+docker compose up -d
+```
+
+| Kebutuhan Pengaturan | Langkah / Konfigurasi |
 |---|---|
-| Ganti port di Ubuntu | Ubah `"5000:5000"` menjadi misalnya `"5001:5000"` |
-| Zona waktu | Ubah nilai `TZ` |
-| Tambah folder bacaan | Tambah baris `volumes`, misalnya `- /data/komik:/komik` |
-| Batasi memori container | Tambah `mem_limit: 1g` di bawah `kavita` (jangan terlalu kecil, pilih angka setelah mengukur) |
+| Mengubah Port Internal | Ubah pemetaan port `"50000:5000"` menjadi misalnya `"50001:5000"` (pastikan URL pada konfigurasi Cloudflare Zero Trust juga diubah ke localhost:50001) |
+| Menyesuaikan Zona Waktu | Perbarui nilai variabel environment `TZ` (misalnya `TZ=Asia/Jakarta`) |
+| Menambah Direktori Bacaan | Tambahkan baris pemetaan direktori pada blok volumes, contoh: - /home/fatihzaraj/komik_baru:/komik_baru |
+| Membatasi Penggunaan Memori | Tambahkan parameter `mem_limit: 1g` di bawah layanan `kavita` untuk membatasi konsumsi RAM di Laptop server |
 
-Kavita membaca koleksi dari folder, bukan dari unggahan lewat web, sehingga batas upload file tidak menjadi pengaturan utama.
+Kavita memindai berkas secara langsung dari sistem berkas server lokal, bukan melalui pengunggahan via peramban web (*web upload*), sehingga tidak diperlukan pengaturan batasan ukuran unggah (*upload limit*) pada web server.
 
-Pemakaian sumber daya sebenarnya bisa dilihat dengan:
+Pemantauan penggunaan sumber daya laptop server secara waktu nyata (*real-time*) dapat dilakukan menggunakan perintah:
 ```bash
 sudo docker stats --no-stream
 ```
 
 
-
 # Plugin untuk fungsi tambahan
 [`^ kembali ke atas ^`](#)
 
-Kavita tidak memakai sistem plugin seperti CMS. Fungsi tambahannya berupa fitur bawaan atau integrasi, menurut README resmi [2]:
+Kavita tidak menggunakan arsitektur *plugin* atau ekstensi modular layaknya CMS tradisional (seperti WordPress atau PrestaShop). Seluruh kapabilitas tambahan disediakan melalui fitur bawaan (*built-in*) serta integrasi API eksternal:
 
-| Fungsi | Keterangan |
+| Fitur Tambahan | Penjelasan & Fungsi |
 |---|---|
-| Metadata, ulasan, rekomendasi, scrobbling | Tersedia lewat **Kavita+**, langganan berbayar |
-| Manajemen pengguna | Peran, batas usia, dan OIDC (login lewat penyedia identitas) |
-| Tema tampilan | Repositori tema komunitas (Theme Repo) |
-| Pengelompokan bacaan | Collections, Reading Lists (impor CBL), Want to Read |
-| Anotasi dan highlight | Untuk file berbasis EPUB |
-| Akses dari aplikasi lain | OPDS (tercantum di topik repositori) |
+| **Kavita+** | Layanan terintegrasi untuk sinkronisasi metadata komik otomatis, ulasan, rekomendasi pembaca, dan *scrobbling* data bacaan [2] |
+| **Manajemen Pengguna & OIDC** | Pengaturan hak akses berbasis peran (*role-based access*), pembatasan rating usia (*age restriction*), serta autentikasi pihak ketiga via OpenID Connect (OIDC) [2] |
+| **Theme Repository** | Kustomisasi antarmuka aplikasi melalui repositori tema visual komunitas |
+| **Pengelompokan Seri** | Pengorganisasian berkas ke dalam *Collections*, *Want to Read*, serta impor daftar bacaan eksternal berbasis format `.cbl` (*ComicBookList*) |
+| **Anotasi & Bookmark** | Fitur penanda halaman, sorotan teks (*highlight*), dan pembuatan catatan bacaan khusus berkas EPUB |
+| **Protokol OPDS** | Dukungan *Open Publication Distribution System* (OPDS) untuk menghubungkan Kavita ke aplikasi pembaca seluler (seperti Mihon, Panels, atau Chunky) tanpa membuka browser |
 
 
 
 # Maintenance
 [`^ kembali ke atas ^`](#)
 
-Data penting ada di volume `kavita-config` dan folder `~/kavita/manga`. Karena Kavita masih beta dan data bisa hilang [2], backup rutin penting.
+Seluruh data vital Kavita tersimpan di dalam folder lokal `~/kavita/config` (berisi database SQLite dan pengaturan akun) serta direktori `~/manga` (berkas komik/buku). Menjaga pencadangan (*backup*) rutin sangat penting untuk mencegah kehilangan data sistem.
 
-#### Backup manual
+#### Backup Manual
+Karena konfigurasi disimpan di folder lokal biasa, kamu cukup mengompresi folder tersebut menjadi arsip `.tar.gz` menggunakan perintah bawaan Linux:
 ```bash
 mkdir -p ~/backup
-sudo docker run --rm -v kavita_kavita-config:/data -v ~/backup:/backup alpine tar czf /backup/kavita-config-$(date +%F).tar.gz -C /data .
-```
-Nama volume `kavita_kavita-config` mengikuti nama folder proyek (`kavita`) ditambah nama volume di `compose.yaml`. Pastikan namanya dengan `sudo docker volume ls`.
+tar -czvf ~/backup/kavita-config-$(date +%F).tar.gz -C ~/kavita config
 
-#### Backup tiap pekan dan hapus backup lama
-Buka `sudo crontab -e`, lalu tambahkan:
+#### Otomatisasi Backup Terjadwal (Cron Job)
+Buka konfigurasi cron server dengan menjalankan `sudo crontab -e`, kemudian tambahkan baris penjadwalan berkala:
 ```cron
-0 2 * * 0 docker run --rm -v kavita_kavita-config:/data -v /home/wafiirbn/backup:/backup alpine tar czf /backup/kavita-config-$(date +\%F).tar.gz -C /data .
-30 2 * * 0 find /home/wafiirbn/backup -name 'kavita-config-*.tar.gz' -mtime +30 -delete
+0 2 * * 0 tar -czf /home/fatihzaraj/backup/kavita-config-$(date +\%F).tar.gz -C /home/fatihzaraj/kavita config
+30 2 * * 0 find /home/fatihzaraj/backup -name 'kavita-config-*.tar.gz' -mtime +30 -delete
 ```
-Artinya: tiap Minggu pukul 02.00 buat backup, dan pukul 02.30 hapus backup yang lebih tua dari 30 hari. Tanda `\%` wajib di cron.
+*Keterangan: Perintah cron di atas akan membuat arsip cadangan otomatis setiap hari Minggu pukul 02.00 dini hari, serta menghapus arsip cadangan yang telah berusia lebih dari 30 hari secara berkala pada pukul 02.30.*
 
 <details>
-<summary>Cara memulihkan dari backup</summary>
+<summary>Cara Pemulihan Data (Restore Data)</summary>
 
-Hentikan Kavita, kembalikan isi volume dari file backup (ganti `NAMA-FILE` dengan nama file backup), lalu nyalakan lagi:
+Jika terjadi kerusakan database atau server dipindahkan ke Laptop Server baru, hentikan kontainer Kavita, pulihkan isi volume dari file arsip cadangan, lalu jalankan kembali layanan:
 
 ```bash
 cd ~/kavita
 sudo docker compose stop
-sudo docker run --rm -v kavita_kavita-config:/data -v ~/backup:/backup alpine sh -c "cd /data && tar xzf /backup/NAMA-FILE.tar.gz"
+tar -xzvf ~/backup/NAMA-FILE-BACKUP.tar.gz -C ~/kavita
 sudo docker compose start
 ```
 
 </details>
 
-#### Perintah rutin (jalankan di `~/kavita`)
+#### Manajemen Layanan Rutin
+Seluruh perintah pemeliharaan dijalankan di dalam direktori proyek `~/kavita`:
 ```bash
-sudo docker compose ps               # cek status
-sudo docker compose logs --tail 30   # lihat log
-sudo docker compose restart          # restart aplikasi
-sudo docker compose stop             # hentikan sementara, data aman
-sudo docker compose start            # nyalakan lagi
+sudo docker compose ps               # Memeriksa status kesehatan kontainer
+sudo docker compose logs --tail 50   # Memantau 50 baris log aktivitas terkini
+sudo docker compose restart          # Memulai ulang layanan kontainer
+sudo docker compose stop             # Menghentikan layanan sementara (data tetap aman)
+sudo docker compose start            # Menyalakan kembali kontainer
 ```
 
-> **Peringatan:** jangan jalankan `docker compose down -v`. Opsi `-v` menghapus volume sehingga semua akun dan library hilang. `docker compose down` tanpa `-v` hanya menghapus container.
+> **Peringatan Keamanan:** Jangan pernah mengeksekusi perintah `docker compose down -v`. Opsi flag `-v` akan menghapus seluruh volume penyimpanan persisten sehingga seluruh akun pengguna, database, dan metadata *library* akan terhapus permanen.
 
 
 
 # Otomatisasi
 [`^ kembali ke atas ^`](#)
 
-Instalasi di atas bisa dijalankan sekaligus dengan `script shell` [setup-kavita.sh](setup-kavita.sh). Skrip memasang Docker, membuat folder dan `compose.yaml`, menjalankan Kavita, lalu menunggu sampai merespons.
+Seluruh tahapan pemasangan dependensi Docker, pembuatan direktori proyek, penyusunan konfigurasi `compose.yaml`, hingga peluncuran kontainer di Laptop server dapat dieksekusi secara otomatis menggunakan skrip instalasi tunggal [setup-kavita.sh](setup-kavita.sh).
 
+Jalankan skrip otomasi pada Laptop server dengan perintah:
 ```bash
 bash setup-kavita.sh
 ```
 
-Port Forwarding VirtualBox dan pembuatan akun admin tetap dilakukan manual.
-
 <details>
-<summary>Lihat isi lengkap setup-kavita.sh</summary>
+<summary>Lihat isi lengkap setup-kavita.sh (Versi Laptop Server Production)</summary>
 
 ```bash
 #!/bin/bash
-# Setup Kavita pakai Docker di Ubuntu
-# Jalankan: bash setup-kavita.sh  (jangan pakai sudo di depannya)
+# Skrip Otomasi Instalasi Server Kavita (Laptop server & Cloudflare)
+# Penggunaan: bash setup-kavita.sh
 
 set -e
 
 PORT=5000
 FOLDER=~/kavita
 
+echo "==> 1. Memperbarui repositori dan memasang dependensi inti..."
 sudo apt-get update
+sudo apt-get install -y ca-certificates curl gnupg
 
-# Install Docker dari repository resmi
-sudo apt-get install -y ca-certificates curl
+# Pemasangan Docker Engine resmi
 sudo install -m 0755 -d /etc/apt/keyrings
-sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo curl -fsSL [https://download.docker.com/linux/ubuntu/gpg](https://download.docker.com/linux/ubuntu/gpg) -o /etc/apt/keyrings/docker.asc
 sudo chmod a+r /etc/apt/keyrings/docker.asc
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo ${UBUNTU_CODENAME:-$VERSION_CODENAME}) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] [https://download.docker.com/linux/ubuntu](https://download.docker.com/linux/ubuntu) $(. /etc/os-release && echo ${UBUNTU_CODENAME:-$VERSION_CODENAME}) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 sudo apt-get update
 sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 sudo systemctl enable --now docker
 
-# Siapkan folder Kavita
+echo "==> 2. Menyiapkan direktori penyimpanan Kavita..."
 mkdir -p $FOLDER/manga
 cd $FOLDER
 
-# Cek port
+# Validasi ketersediaan port
 if ss -tln | grep -q ":$PORT " && ! sudo docker ps | grep -q kavita; then
-  echo "Port $PORT sudah dipakai program lain. Ganti PORT di atas lalu jalankan ulang."
+  echo "Error: Port $PORT telah digunakan oleh proses lain."
   exit 1
 fi
 
-# Buat compose.yaml (kalau belum ada)
+echo "==> 3. Membuat file konfigurasi compose.yaml..."
 if [ ! -f compose.yaml ]; then
-cat > compose.yaml <<COMPOSE
-services:
-  kavita:
-    image: jvmilazz0/kavita:latest
-    container_name: kavita
-    volumes:
-      - ./manga:/manga
-      - kavita-config:/kavita/config
-    environment:
-      - TZ=Asia/Jakarta
-    ports:
-      - "$PORT:5000"
-    restart: unless-stopped
-
-volumes:
-  kavita-config:
-COMPOSE
-fi
-
-sudo docker compose config -q && echo "compose.yaml valid"
-
-# Unduh dan jalankan
+cat > compose.yaml <<COMPOSE "="=" "$PORT:5000" "Berkas && - -q ./manga:/manga COMPOSE TZ="Asia/Jakarta" berhasil compose compose.yaml config container_name: divalidasi." docker echo environment: fi image: jvmilazz0/kavita:latest kavita kavita-config: kavita-config:/kavita/config kavita: ports: restart: services: sudo unless-stopped volumes:> 4. Mengunduh image dan menyalakan kontainer..."
 sudo docker compose pull
 sudo docker compose up -d
 
-# Tunggu Kavita siap (maksimal 3 menit)
-echo "Menunggu Kavita siap..."
+echo "==> 5. Menunggu inisialisasi awal server Kavita..."
 for i in $(seq 1 36); do
-  curl -fs -o /dev/null http://localhost:$PORT && break
+  if curl -fs -o /dev/null http://localhost:$PORT; then
+    echo "Server Kavita berhasil merespons permintaan!"
+    break
+  fi
   sleep 5
 done
 
 sudo docker compose ps
 
 echo ""
-echo "Kavita sudah jalan di http://localhost:$PORT (dari dalam Ubuntu)"
-echo "Folder bacaan : $FOLDER/manga  (di Kavita pilih folder /manga)"
+echo "=========================================================="
+echo "Instalasi Berhasil!"
+echo "Status Internal : Berjalan pada http://localhost:$PORT"
+echo "Direktori Berkas: $FOLDER/manga (Mapping kontainer: /manga)"
 echo ""
-echo "Sisa langkah manual:"
-echo "1. Di VirtualBox: Settings > Network > Port Forwarding"
-echo "   TCP, Host IP 127.0.0.1, Host Port $PORT, Guest IP $(hostname -I | awk '{print $1}'), Guest Port $PORT"
-echo "2. Buka http://localhost:$PORT di browser Windows, buat akun admin"
-echo ""
-echo "Jangan jalankan 'docker compose down -v', datanya hilang semua."
+echo "Langkah Lanjutan:"
+echo "1. Konfigurasikan Reverse Proxy (Nginx) & SSL untuk domain publik."
+echo "2. Akses aplikasi secara publik via [https://kavita.fatihzar.my.id/](https://kavita.fatihzar.my.id/)."
+echo "=========================================================="
 ```
 
 </details>
-
-
 
 # Cara Pemakaian
 [`^ kembali ke atas ^`](#)
@@ -352,215 +380,133 @@ Semua contoh memakai file uji milik sendiri atau berlisensi bebas. Letak menu bi
 
 #### 1. Buat akun admin
 
-Buka `http://localhost:5000`. Pada kunjungan pertama, Kavita meminta kita membuat akun admin. Isi nama pengguna dan kata sandi, lalu masuk.
+Akses URL publik melalui browser: **https://kavita.fatihzar.my.id/**. Pada kunjungan pertama, Kavita meminta kita membuat akun admin. Isi nama pengguna, email, dan kata sandi, lalu klik **Register**.
 
-![Halaman pembuatan akun admin](screenshots/01-akun-admin.png)
+<img width="1600" height="772" alt="image" src="https://github.com/user-attachments/assets/0f62a2ba-7cf8-4603-9949-273747f55015" />
 
 #### 2. Siapkan file uji
 
-Taruh beberapa file (`.epub`, `.cbz`, `.pdf`) di folder bacaan, lalu cek bahwa file terlihat:
+Taruh beberapa file (`.epub`, `.cbz`, `.cbr`, `.pdf`) di folder bacaan server, 
 ```bash
-ls -l ~/kavita/manga
+# Contoh memindahkan file komik ke laptop server
+scp /lokasi/komputer/kamu/komik.cbz fatihzaraj@<IP_LAPTOP_SERVER>:~/manga/
 ```
 
-![Isi folder bacaan](screenshots/02-file-uji.png)
+lalu cek bahwa file terlihat dari terminal:
+```bash
+ls -l ~/manga
+```
+
+<img width="1025" height="180" alt="image" src="https://github.com/user-attachments/assets/d03c7c1c-1fd0-4372-9847-89bf93f9a8de" />
+
 
 #### 3. Buat library
 
-Di Kavita, tambah *library* baru bertipe sesuai isi file (misalnya Manga, Comic, atau Book), lalu pilih folder `/manga` (path di dalam container, bukan path di Ubuntu). Jalankan *scan*.
+Di antarmuka Kavita, masuk ke menu **Server Settings** > **Libraries** > **"Add Library"** baru bertipe sesuai isi file (misalnya Manga, Comic, atau Book), lalu pilih folder `/manga` (path internal di dalam container yang mengarah ke `~/manga` pada host server). Jalankan **Scan Library**.
 
-![Form pembuatan library](screenshots/03-buat-library.png)
+Klik Add Library:
+<img width="1600" height="763" alt="image" src="https://github.com/user-attachments/assets/57a3b2c1-2c8c-4407-8c2d-08a25053e47c" />
+
+Isi nama dan type:
+<img width="1600" height="802" alt="image" src="https://github.com/user-attachments/assets/b13ac29e-8ae5-4002-816d-cc85487152c6" />
+
+Pilih folder:
+<img width="1600" height="846" alt="image" src="https://github.com/user-attachments/assets/8c707b94-45b8-444b-bc2e-0aa70a4a8169" />
+
+Cover image bisa diisi, jika kosong akan ditampilkan cover halaman pertama, klik next
+<img width="1600" height="809" alt="image" src="https://github.com/user-attachments/assets/a19ceca7-56ce-43c0-932b-653c748ae33a" />
+
 
 #### 4. Lihat hasil scan
 
-Setelah scan selesai, file uji tampil sebagai seri di halaman library.
+Setelah proses pemindaian selesai, file uji akan tampil sebagai koleksi seri di halaman library utama.
 
-![Library berisi file uji](screenshots/04-library.png)
+<img width="1600" height="810" alt="image" src="https://github.com/user-attachments/assets/86ac6e90-4c80-44c7-9dbe-9fa2b709857f" />
+
 
 #### 5. Buka pembaca
 
-Buka satu file di pembaca bawaan. Coba mode baca yang tersedia (misalnya halaman per halaman dan *continuous*).
+Buka salah satu judul komik/buku di pembaca bawaan peramban web (*web reader*). 
+<img width="1917" height="916" alt="image" src="https://github.com/user-attachments/assets/5b37328f-9120-4dea-8eae-f1a6451e4ec9" />
 
-![Tampilan pembaca](screenshots/05-pembaca.png)
 
 #### 6. Kelompokkan bacaan
 
-Buat sebuah *collection* atau *reading list* dan masukkan beberapa seri.
+Buat sebuah **Collection** atau **Reading List** dan masukkan beberapa judul seri untuk kerapian organisasi koleksi.
 
-![Collection atau reading list](screenshots/06-collection.png)
+Klik titik tiga pada Komik yang ingin dipilih, lalu arahkan kursor pada "Add to" dan klik "Add to Collection"
+<img width="1600" height="803" alt="image" src="https://github.com/user-attachments/assets/26f7bf57-864b-4392-bd67-df26be4ae52d" />
+Tulis nama Collection contoh "Fiksi":
+<img width="1600" height="804" alt="image" src="https://github.com/user-attachments/assets/728728c4-cb6e-4953-afb8-bba311e7f64e" />
+Cek Hasil: 
+<img width="1600" height="813" alt="image" src="https://github.com/user-attachments/assets/3db6d9e2-95c2-42a2-88c9-1c073ce5ea10" />
 
-#### 7. Uji restart
 
-Restart aplikasi, lalu restart Ubuntu, kemudian cek bahwa akun dan library masih ada:
+#### 7. Uji restart & pemulihan otomatis
+
+Lakukan pengujian restart kontainer serta pengujian *reboot* pada server untuk memastikan keberlanjutan layanan:
+
 ```bash
 cd ~/kavita && sudo docker compose restart
 sudo reboot
 ```
-Setelah login lagi ke Ubuntu:
+
+Setelah server menyala kembali:
+
 ```bash
 cd ~/kavita && sudo docker compose ps
 ```
-Kavita harus `Up` otomatis dan data tetap ada di browser.
 
-![Status setelah restart](screenshots/07-setelah-restart.png)
+Layanan Kavita harus berada pada status `Up` secara otomatis, daemon `cloudflared` aktif, serta seluruh data akun dan library tetap tersimpan penuh.
+
+<img width="1600" height="324" alt="image" src="https://github.com/user-attachments/assets/ebd917da-b28e-4a70-8695-1739bfe302fc" />
 
 #### Hasil pengukuran sumber daya
 
-Diambil dengan `sudo docker stats --no-stream`, diulang tiga kali lalu dirata-rata.
+Diambil dengan perintah `sudo docker stats --no-stream` di server, diulang tiga kali lalu dirata-rata:
+
+<img width="1600" height="121" alt="image" src="https://github.com/user-attachments/assets/803d4d22-b9ff-4ee9-93d1-f65c22b76f20" />
 
 | Kondisi | RAM (MiB) | CPU (%) |
 |---|---|---|
-| Idle, setelah start selesai | | |
-| Saat scan library | | |
-| Saat membaca file | | |
-
+| Idle, setelah start selesai | ~260 - 280 MiB | < 1% |
+| Saat scan library | ~350 - 500 MiB | 15% - 35% |
+| Saat membaca file via web reader | ~280 - 320 MiB | 2% - 5% |
 
 # Pembahasan
 [`^ kembali ke atas ^`](#)
 
-Dari log terlihat Kavita berbasis .NET dan berjalan sebagai satu container. Penilaian berikut berdasarkan praktik dan dokumentasi.
+**Kavita** ditulis dalam bahasa pemrograman C# / .NET yang didukung oleh penggunaan basis data SQLite internal. Sebagai salah satu server media komik dan buku digital *self-hosted* yang modern, aplikasi ini menawarkan berbagai kelebihan, diantaranya :
+- Instalasi singkat lewat Docker Compose karena hanya membutuhkan satu berkas `compose.yaml`.
+- Tanpa database dan web server terpisah karena modul basis data sudah terintegrasi secara internal.
+- Satu server untuk komik, manga, dan buku digital dalam satu wadah terpadu.
+- Manajemen pengguna lengkap dengan kontrol peran, hak akses, hingga batasan rating usia (*age restriction*).
+- Gratis dan berlisensi sumber terbuka (GPL v3).
+- Akses HTTPS lewat Cloudflare Tunnel tanpa buka port router lokal.
 
-Kelebihan :
-- Instalasi singkat lewat Docker Compose: satu file konfigurasi dan beberapa perintah.
-- Tidak membutuhkan database atau web server terpisah menurut dokumentasi [1].
-- Data terpisah jelas: file bacaan di folder biasa, akun dan pengaturan di Docker volume.
-- Satu server untuk komik, manga, dan buku (EPUB/PDF) [2].
-- Manajemen pengguna cukup lengkap: peran, batas usia, OIDC [2].
-- Gratis dan berlisensi GPL v3. Fitur yang butuh layanan internet ada di langganan opsional Kavita+ [2].
+Tentu saja, sebuah aplikasi pasti memiliki kekurangan. Kekurangan yang dimiliki **Kavita** antara lain :
+- Masih beta, data bisa hilang sehingga pengelola wajib melakukan pencadangan data secara berkala.
+- Start pertama lama dan log membingungkan karena memunculkan peringatan migrasi database.
+- Tidak ada konten bawaan sehingga pengguna harus menyediakan dan mengunggah berkas koleksinya sendiri.
+- Server diurus sendiri, mencakup stabilitas perangkat keras, pasokan daya, konektivitas, hingga pembaruan sistem.
+- Metadata internet butuh Kavita+ berbayar untuk fitur pengindeksan metadata otomatis berskala besar.
 
-Kekurangan :
-- Masih beta, dan README menyebut data bisa hilang [2]. Backup wajib.
-- Start pertama lama (lebih dari satu menit di VM 4,3 GB), dan log penuh kata `Fatal` dan `Error` yang bukan masalah, membingungkan pemula.
-- Tidak ada konten bawaan. Kita harus punya file sendiri dari sumber yang sah.
-- Harus mengurus server sendiri: instalasi, port forwarding, backup, dan pembaruan.
-- Metadata dari internet bergantung pada Kavita+ yang berbayar [2].
-
-### Perbandingan dengan LINE WEBTOON
-
-**Kenapa LINE WEBTOON?** Aplikasi ini paling dikenal pembaca komik di Indonesia, tujuannya sama dengan Kavita (membaca komik), tetapi cara kerjanya berlawanan. Kontras ini menunjukkan apa yang didapat dan apa yang harus ditanggung ketika memilih *self-hosted* dibanding layanan terkelola. WEBTOON menyediakan **katalog** milik platform, sedangkan Kavita hanya menyajikan **file milik kita sendiri**.
-
-| Aspek | Kavita | LINE WEBTOON |
-|---|---|---|
-| Jenis | Server pribadi, berjalan di perangkat sendiri [2] | Layanan komik online milik penyedia [4] |
-| Sumber konten | File milik sendiri di folder | Katalog platform, lebih dari 7.000 karya menurut [7] |
-| Cara memulai | Pasang Docker, siapkan compose, port forwarding, buat akun | Pasang aplikasi dari App Store atau Google Play [4] |
-| Biaya | Gratis. Kavita+ opsional [2]. Perangkat dan waktu perawatan ditanggung sendiri | Gratis diunduh. Seri Originals gratis dibaca, Coins untuk membuka episode lebih awal lewat Fast Pass [4] |
-| Contoh harga Coins | Tidak ada | Rp54.200 untuk 328 koin di reseller voucher [8] (indikatif, bukan harga resmi) |
-| Akses | Browser ke server sendiri [2] | Aplikasi iOS dan Android [4] |
-| Bahasa Indonesia | Antarmuka mendukung lokalisasi [2], isi tergantung file | Tersedia dalam bahasa Indonesia [7] |
-| Baca offline | Tidak diverifikasi | Bisa, episode diunduh di aplikasi [4] |
-| Pembaruan konten | Kita sendiri yang menambah file | Update rutin harian atau mingguan oleh platform [4] |
-| Siapa yang mengatur aturan akses | Pemilik server | Platform. Contoh: Daily Pass dihentikan, episode kini memakai Coins atau iklan [5] |
-| Riwayat baca (analisis) | Tersimpan di server sendiri | Tersimpan di akun pada platform |
-| Risiko utama | Data bisa hilang pada versi beta tanpa backup [2] | Katalog dan aturan akses berubah mengikuti kebijakan platform [5] |
-
-<details>
-<summary>Catatan kualitas sumber perbandingan</summary>
-
-- Halaman bantuan resmi WEBTOON [4] masih menyebut Daily Pass, tetapi laporan ANN [5] menyatakan fitur itu dihentikan. ANN dipakai karena lebih spesifik, dan halaman bantuan kemungkinan belum diperbarui. Artikel lain [6] masih menyebut Daily Pass dan Ad Pass, jadi fitur dan syarat bisa berbeda per wilayah.
-- Harga koin diambil dari reseller pihak ketiga [8], bukan dari WEBTOON, jadi hanya gambaran kasar.
-- Jumlah karya (lebih dari 7.000) berasal dari artikel pihak ketiga [7] dan bisa sudah berubah.
-- Baris bertanda "analisis" adalah kesimpulan penulis dari cara kerja masing-masing, bukan kutipan sumber.
-- WEBTOON tidak diuji langsung.
-
-</details>
-
-Alur memilih (dirender otomatis oleh GitHub):
-
-```mermaid
-flowchart TD
-    A["Mau baca komik atau buku"] --> B{"Punya file sendiri<br/>CBZ, EPUB, atau PDF?"}
-    B -- Ya --> C{"Siap mengurus server<br/>dan backup sendiri?"}
-    C -- Ya --> K["Kavita"]
-    C -- Tidak --> L["Baca dengan aplikasi<br/>pembaca biasa"]
-    B -- Tidak --> D{"Mau katalog siap baca<br/>dan update rutin?"}
-    D -- Ya --> W["LINE WEBTOON"]
-    D -- Tidak --> E["Beli atau cari karya<br/>berlisensi bebas dulu"]
-```
-
-#### Uji pemahaman: Kavita atau WEBTOON?
-
-Pikirkan jawabannya dulu, lalu klik untuk melihat.
-
-<details>
-<summary>Kasus 1: ingin membaca serial terbaru yang update tiap minggu tanpa repot</summary>
-
-**WEBTOON.** Katalog dan update diurus platform [4]. Kavita tidak punya konten, jadi tidak ada serial yang bisa dibaca sebelum kita menambahkan file sendiri.
-
-</details>
-
-<details>
-<summary>Kasus 2: punya puluhan file .cbz dan .epub hasil beli tanpa DRM, ingin dibaca dari HP dan laptop</summary>
-
-**Kavita.** Kavita menyajikan file milik sendiri ke banyak perangkat lewat browser [2]. WEBTOON tidak bisa memuat file pribadi.
-
-</details>
-
-<details>
-<summary>Kasus 3: tidak mau berurusan dengan Docker, port forwarding, dan backup</summary>
-
-**WEBTOON.** Cukup pasang aplikasi [4]. Kavita menuntut kita mengurus server sendiri, termasuk backup karena statusnya masih beta [2].
-
-</details>
-
-<details>
-<summary>Kasus 4: tidak mau ada iklan atau Coins pada koleksi sendiri</summary>
-
-**Kavita.** Aturan akses ada di tangan pemilik server. Pada WEBTOON, aturan akses ditentukan platform dan bisa berubah, seperti dihentikannya Daily Pass [5].
-
-</details>
-
-### Kesimpulan
-
-Kavita bukan pengganti WEBTOON, karena Kavita tidak punya katalog. Keduanya melayani kebutuhan berbeda: WEBTOON untuk membaca karya yang disediakan platform dengan mudah, Kavita untuk mengatur koleksi file sendiri dengan kontrol penuh, dengan konsekuensi mengurus server dan backup sendiri. Kavita cocok bagi yang sudah punya koleksi file dan nyaman dengan Docker. WEBTOON cocok bagi yang ingin langsung membaca tanpa pengaturan teknis.
-
-### Keterbatasan
-
-- Uji hanya di satu VM dengan RAM 4,3 GB, jadi angka sumber daya tidak bisa digeneralisasi.
-- WEBTOON dibandingkan dari dokumentasi dan artikel, bukan dipakai langsung. Harga dan aturan akses bisa berubah per wilayah dan waktu.
-- Sebagian sel tabel ditandai "tidak diverifikasi" daripada ditebak.
-
+Jika dibandingkan dengan aplikasi komik daring populer seperti **LINE WEBTOON**, aplikasi ini memiliki beberapa keunggulan dan kelemahan. Berikut adalah beberapa perbandingan antara kedua aplikasi ini :
+- **Kavita** merupakan server pribadi yang berjalan di perangkat sendiri dan dibuka melalui *browser*, sedangkan **LINE WEBTOON** adalah layanan komik *online* milik penyedia pihak ketiga yang diakses melalui aplikasi iOS dan Android.
+- Sumber konten **Kavita** berasal dari berkas milik pengguna sendiri yang disimpan di dalam folder server, sedangkan **LINE WEBTOON** menyediakan katalog terpusat milik platform dengan koleksi lebih dari 7.000 karya.
+- Cara memulai **Kavita** membutuhkan langkah teknis (pemasangan Docker, Compose, Cloudflare Tunnel, dan pengaturan akun), sedangkan **LINE WEBTOON** sangat praktis karena pengguna cukup memasang aplikasi dari App Store atau Play Store.
+- Biaya operasional **Kavita** sepenuhnya gratis (fitur Kavita+ opsional dan perawatan server ditanggung sendiri), sedangkan **LINE WEBTOON** gratis diunduh namun menerapkan sistem transaksi koin (*Coins*) untuk membuka episode lebih awal (*Fast Pass*).
+- Aturan akses bacaan pada **Kavita** ditentukan secara penuh oleh pemilik server, sedangkan pada **LINE WEBTOON** aturan akses dikendalikan sepihak oleh kebijakan platform (seperti kebijakan penutupan fitur *Daily Pass*).
+- Pembaruan konten pada **Kavita** dilakukan secara mandiri dengan menambahkan berkas baru ke direktori server, sedangkan **LINE WEBTOON** memperbarui episode komik secara terjadwal dan rutin harian atau mingguan.
 
 
 # Referensi
 [`^ kembali ke atas ^`](#)
 
-Semua tautan diakses pada 10 Oktober 2026.
-
-1. [Kavita Wiki](https://wiki.kavitareader.com) - dokumentasi resmi (Getting Started, Docker Install)
-2. [Kareadita/Kavita](https://github.com/Kareadita/Kavita) - README, lisensi GPL-3.0, GitHub
-3. [Install Docker Engine on Ubuntu](https://docs.docker.com/engine/install/ubuntu/) - Docker
-4. [Is the WEBTOON app free?](https://help2.line.me/LINE_WEBTOON/android/categoryId/20006001/3/pc?lang=en) - LINE WEBTOON Help Center
-5. [Webtoon Service Ends Daily Pass Feature](https://www.animenewsnetwork.com/news/.225053) - Anime News Network
-6. [5 Daftar Situs untuk Baca Manhwa Legal Terbaik](https://www.vcgamers.com/news/?p=227942) - VCGamers
-7. [Line WEBTOON](https://www.tokopedia.com/streaming/webtoon/) - Tokopedia Digital
-8. [Webtoon Koin](https://www.lapakgaming.com/id-id/koin-webtoon) - Lapakgaming (reseller voucher, bukan sumber resmi)
-9. Log dan keluaran terminal dari praktik sendiri di VM Ubuntu (9 sampai 10 Oktober 2026)
-
-
-
-<details>
-<summary>Catatan pengerjaan (hapus bagian ini sebelum dikumpulkan)</summary>
-
-#### Progres praktik
-
-- [x] Docker Engine dan Compose terpasang
-- [x] Folder `~/kavita/manga` dan `compose.yaml` dibuat, hasil validasi `VALID`
-- [x] Image diunduh dan container berjalan
-- [x] Tes dari dalam Ubuntu: `HTTP/1.1 200 OK`
-- [ ] Port Forwarding VirtualBox (Langkah 7)
-- [ ] Akun admin dibuat dan login berhasil
-- [ ] Library dibuat, file uji terbaca
-- [ ] Uji restart aplikasi dan restart Ubuntu
-- [ ] Semua screenshot di folder `screenshots/` (`00` sampai `07`)
-- [ ] Tabel pengukuran sumber daya diisi
-- [ ] Perintah backup, cron, dan pemulihan dicoba sekali
-
-#### Sebelum dikumpulkan
-
-- Letakkan `laporan-kavita.md`, `setup-kavita.sh`, dan folder `screenshots/` di folder yang sama, karena tautan dan gambar memakai path relatif.
-- Lihat tampilan akhirnya di preview GitHub. Mermaid dan bagian yang bisa dibuka hanya tampil benar di viewer yang mendukungnya.
-- Cek ulang hal yang bisa berubah: aturan Daily Pass WEBTOON, harga koin, dan versi Kavita.
-- Kalimat hasil di bagian Instalasi ("Hasil di VM praktik") sudah sesuai keluaran terminal yang dikirim. Jangan diubah kecuali hasilnya berbeda.
-
-</details>
+1. [Kavita Documentation & Wiki](https://wiki.kavitareader.com) - Dokumentasi resmi panduan instalasi Docker dan arsitektur sistem.
+2. [Kareadita/Kavita GitHub Repository](https://github.com/Kareadita/Kavita) - Repositori kode sumber resmi, lisensi GPL-3.0, serta format berkas yang didukung.
+3. [Install Docker Engine on Ubuntu](https://docs.docker.com/engine/install/ubuntu/) - Dokumentasi instalasi resmi Docker Engine dan Docker Compose plugin.
+4. [LINE WEBTOON Help Center](https://help2.line.me/LINE_WEBTOON/android/categoryId/20006001/3/pc?lang=en) - Panduan operasional platform, kebijakan monetisasi koin, dan sistem tiket baca.
+5. [Anime News Network (ANN): Webtoon Service Ends Daily Pass Feature](https://www.animenewsnetwork.com/news/.225053) - Laporan perubahan kebijakan monetisasi dan penghentian fitur Daily Pass pada LINE Webtoon.
+6. [Cloudflare Zero Trust Documentation](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) - Petunjuk teknis penerapan daemon `cloudflared` untuk publikasi layanan web tanpa port forwarding.
+7. [Log Operasional & Pengujian Server Fisik](https://kavita.fatihzar.my.id/) - Data telemetri operasional kontainer, pemantauan sumber daya `docker stats`, dan uji kelangsungan restart pada server bare-metal Linux Mint.
