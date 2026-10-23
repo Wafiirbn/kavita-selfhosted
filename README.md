@@ -1,3 +1,7 @@
+<p align="center">
+  <img width="731" height="341" alt="Unknown-removebg-preview" src="https://github.com/user-attachments/assets/5ff01161-508f-4cfa-ade6-9263f962613c" />
+</p>
+
 <h1 align="center">Kavita</h1>
 <p align="center">Perpustakaan manga, komik, dan buku digital di server sendiri</p>
 
