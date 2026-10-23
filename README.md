@@ -29,7 +29,7 @@
 | Versi yang dipasang | v0.9.1.4 (terlihat di log container) |
 | Catatan pengembang | Masih beta sampai rilis 1.0.0, data bisa hilang walau tim berusaha mencegahnya [2] |
 
-Lingkungan praktik (Server VPS Production):
+Lingkungan praktik (Laptop Server):
 
 | Item | Keterangan |
 |---|---|
@@ -60,7 +60,7 @@ flowchart LR
 - Docker Engine dan Docker Compose plugin [3].
 - CPU dengan dukungan instruksi SSE4.2 [1].
 - Domain / Subdomain aktif (`kavita.fatihzar.my.id`).
-- Operating System Linux (Bare-Metal / VPS Ubuntu/Mint)
+- Operating System Linux (Bare-Metal / Laptop Server Linux Mint)
 - Docker & Docker Compose Plugin
 - Service Daemon `cloudflared` terinstall
 - Domain terhubung ke Cloudflare Zero Trust
@@ -69,7 +69,7 @@ flowchart LR
 
 1. **Login ke Dedicated Laptop Server via SSH**
    
-   Akses terminal server VPS dari komputer lokal menggunakan SSH. Untuk pengguna Windows, koneksi dapat dilakukan langsung melalui **PowerShell**, **Windows Terminal**, maupun aplikasi pihak ketiga seperti **PuTTY**.
+   Akses terminal server dari komputer lokal menggunakan SSH. Untuk pengguna Windows, koneksi dapat dilakukan langsung melalui **PowerShell**, **Windows Terminal**, maupun aplikasi pihak ketiga seperti **PuTTY**.
 
    ```bash
    ssh fatihzaraj@192.168.1.50
@@ -111,11 +111,11 @@ flowchart LR
 
 | Baris | Fungsi |
 |---|---|
-| `/home/fatihzaraj/manga:/manga` | Memetakan folder bacaan lokal VPS ke direktori `/manga` di dalam *container* |
+| `/home/fatihzaraj/manga:/manga` | Memetakan folder bacaan fisik di laptop server ke direktori `/manga` di dalam *container* |
 | `./config:/kavita/config` | *Docker volume* persisten untuk menyimpan database SQLite, cache, dan data akun [1] |
 | `TZ=Asia/Jakarta` | Menetapkan zona waktu sistem di dalam *container* sesuai WIB |
 | `"50000:5000"` | Memetakan *port* 50000 pada host ke *port* 5000 di dalam *container* |
-| `restart: always` | Memastikan *container* menyala otomatis kembali saat VPS di-*reboot* |
+| `restart: always` | Memastikan *container* menyala otomatis kembali saat Laptop Server di-*reboot* |
 
 </details>
 
@@ -222,11 +222,11 @@ docker compose up -d
 | Mengubah Port Internal | Ubah pemetaan port `"50000:5000"` menjadi misalnya `"50001:5000"` (pastikan URL pada konfigurasi Cloudflare Zero Trust juga diubah ke localhost:50001) |
 | Menyesuaikan Zona Waktu | Perbarui nilai variabel environment `TZ` (misalnya `TZ=Asia/Jakarta`) |
 | Menambah Direktori Bacaan | Tambahkan baris pemetaan direktori pada blok volumes, contoh: - /home/fatihzaraj/komik_baru:/komik_baru |
-| Membatasi Penggunaan Memori | Tambahkan parameter `mem_limit: 1g` di bawah layanan `kavita` untuk membatasi konsumsi RAM di VPS |
+| Membatasi Penggunaan Memori | Tambahkan parameter `mem_limit: 1g` di bawah layanan `kavita` untuk membatasi konsumsi RAM di Laptop server |
 
 Kavita memindai berkas secara langsung dari sistem berkas server lokal, bukan melalui pengunggahan via peramban web (*web upload*), sehingga tidak diperlukan pengaturan batasan ukuran unggah (*upload limit*) pada web server.
 
-Pemantauan penggunaan sumber daya server VPS secara waktu nyata (*real-time*) dapat dilakukan menggunakan perintah:
+Pemantauan penggunaan sumber daya laptop server secara waktu nyata (*real-time*) dapat dilakukan menggunakan perintah:
 ```bash
 sudo docker stats --no-stream
 ```
@@ -270,7 +270,7 @@ Buka konfigurasi cron server dengan menjalankan `sudo crontab -e`, kemudian tamb
 <details>
 <summary>Cara Pemulihan Data (Restore Data)</summary>
 
-Jika terjadi kerusakan database atau server dipindahkan ke VPS baru, hentikan kontainer Kavita, pulihkan isi volume dari file arsip cadangan, lalu jalankan kembali layanan:
+Jika terjadi kerusakan database atau server dipindahkan ke Laptop Server baru, hentikan kontainer Kavita, pulihkan isi volume dari file arsip cadangan, lalu jalankan kembali layanan:
 
 ```bash
 cd ~/kavita
@@ -298,19 +298,19 @@ sudo docker compose start            # Menyalakan kembali kontainer
 # Otomatisasi
 [`^ kembali ke atas ^`](#)
 
-Seluruh tahapan pemasangan dependensi Docker, pembuatan direktori proyek, penyusunan konfigurasi `compose.yaml`, hingga peluncuran kontainer di server VPS dapat dieksekusi secara otomatis menggunakan skrip instalasi tunggal [setup-kavita.sh](setup-kavita.sh).
+Seluruh tahapan pemasangan dependensi Docker, pembuatan direktori proyek, penyusunan konfigurasi `compose.yaml`, hingga peluncuran kontainer di Laptop server dapat dieksekusi secara otomatis menggunakan skrip instalasi tunggal [setup-kavita.sh](setup-kavita.sh).
 
-Jalankan skrip otomasi pada server VPS dengan perintah:
+Jalankan skrip otomasi pada Laptop server dengan perintah:
 ```bash
 bash setup-kavita.sh
 ```
 
 <details>
-<summary>Lihat isi lengkap setup-kavita.sh (Versi VPS Production)</summary>
+<summary>Lihat isi lengkap setup-kavita.sh (Versi Laptop Server Production)</summary>
 
 ```bash
 #!/bin/bash
-# Skrip Otomasi Instalasi Server Kavita (Docker di Ubuntu VPS)
+# Skrip Otomasi Instalasi Server Kavita (Laptop server & Cloudflare)
 # Penggunaan: bash setup-kavita.sh
 
 set -e
@@ -371,3 +371,79 @@ echo "=========================================================="
 ```
 
 </details>
+
+# Cara Pemakaian
+[`^ kembali ke atas ^`](#)
+
+Semua contoh memakai file uji milik sendiri atau berlisensi bebas. Letak menu bisa sedikit berbeda antar versi, jadi sesuaikan dengan tampilan yang muncul.
+
+#### 1. Buat akun admin
+
+Akses URL publik melalui browser: **https://kavita.fatihzar.my.id/**. Pada kunjungan pertama, Kavita meminta kita membuat akun admin. Isi nama pengguna, email, dan kata sandi, lalu klik **Register**.
+
+![Halaman pembuatan akun admin](screenshots/01-akun-admin.png)
+
+#### 2. Siapkan file uji
+
+Taruh beberapa file (`.epub`, `.cbz`, `.cbr`, `.pdf`) di folder bacaan server, lalu cek bahwa file terlihat dari terminal:
+
+```bash
+ls -l ~/manga
+```
+
+![Isi folder bacaan](screenshots/02-file-uji.png)
+
+#### 3. Buat library
+
+Di antarmuka Kavita, masuk ke menu **Server Settings** > **Libraries**, tambah library baru bertipe sesuai isi file (misalnya Manga, Comic, atau Book), lalu pilih folder `/manga` (path internal di dalam container yang mengarah ke `~/manga` pada host server). Jalankan **Scan Library**.
+
+![Form pembuatan library](screenshots/03-buat-library.png)
+
+#### 4. Lihat hasil scan
+
+Setelah proses pemindaian selesai, file uji akan tampil sebagai koleksi seri di halaman library utama.
+
+![Library berisi file uji](screenshots/04-library.png)
+
+#### 5. Buka pembaca
+
+Buka salah satu judul komik/buku di pembaca bawaan peramban web (*web reader*). Coba mode baca yang tersedia (misalnya *Webtoon mode*, *Page-by-Page*, atau *Continuous Vertical*).
+
+![Tampilan pembaca](screenshots/05-pembaca.png)
+
+#### 6. Kelompokkan bacaan
+
+Buat sebuah **Collection** atau **Reading List** dan masukkan beberapa judul seri untuk kerapian organisasi koleksi.
+
+![Collection atau reading list](screenshots/06-collection.png)
+
+#### 7. Uji restart & pemulihan otomatis
+
+Lakukan pengujian restart kontainer serta pengujian *reboot* pada server untuk memastikan keberlanjutan layanan:
+
+```bash
+cd ~/kavita && sudo docker compose restart
+sudo reboot
+```
+
+Setelah server menyala kembali:
+
+```bash
+cd ~/kavita && sudo docker compose ps
+```
+
+Layanan Kavita harus berada pada status `Up` secara otomatis, daemon `cloudflared` aktif, serta seluruh data akun dan library tetap tersimpan penuh.
+
+![Status setelah restart](screenshots/07-setelah-restart.png)
+
+#### Hasil pengukuran sumber daya
+
+Diambil dengan perintah `sudo docker stats --no-stream` di server, diulang tiga kali lalu dirata-rata:
+
+| Kondisi | RAM (MiB) | CPU (%) |
+|---|---|---|
+| Idle, setelah start selesai | ~180 - 220 MiB | < 1% |
+| Saat scan library | ~350 - 500 MiB | 15% - 35% |
+| Saat membaca file via web reader | ~200 - 250 MiB | 2% - 5% |
+
+
