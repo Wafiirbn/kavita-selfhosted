@@ -6,18 +6,15 @@
 <p align="center">Perpustakaan manga, komik, dan buku digital di server sendiri</p>
 
 <p align="center">
-  <img alt="Versi" src="[https://img.shields.io/badge/Kavita-v0.9.1.4-blue](https://img.shields.io/badge/Kavita-v0.9.1.4-blue)">
-  <img alt="Lisensi" src="[https://img.shields.io/badge/lisensi-GPL--3.0-green](https://img.shields.io/badge/lisensi-GPL--3.0-green)">
-  <img alt="Docker" src="[https://img.shields.io/badge/Docker-Compose-2496ED](https://img.shields.io/badge/Docker-Compose-2496ED)">
-  <img alt="OS" src="[https://img.shields.io/badge/Ubuntu-LTS-E95420](https://img.shields.io/badge/Ubuntu-LTS-E95420)">
+  <img alt="Versi" src="https://img.shields.io/badge/Kavita-v0.9.1.4-blue">
+  <img alt="Lisensi" src="https://img.shields.io/badge/lisensi-GPL--3.0-green">
+  <img alt="Docker" src="https://img.shields.io/badge/Docker-Compose-2496ED">
+  <img alt="OS" src="https://img.shields.io/badge/Ubuntu-26.04%20LTS-E95420">
 </p>
 
 [Sekilas Tentang](#sekilas-tentang) | [Instalasi](#instalasi) | [Konfigurasi](#konfigurasi) | [Plugin](#plugin-untuk-fungsi-tambahan) | [Maintenance](#maintenance) | [Otomatisasi](#otomatisasi) | [Cara Pemakaian](#cara-pemakaian) | [Pembahasan](#pembahasan) | [Referensi](#referensi)
 
 > Angka dalam kurung siku, misalnya [2], merujuk ke daftar [Referensi](#referensi).
-> Bagian dengan segitiga di sisi kiri (misalnya "Penjelasan tiap baris") bisa diklik untuk dibuka.
-> Semua blok perintah bisa disalin langsung dengan tombol *copy* tanpa tanda `$`.
-
 
 
 # Sekilas Tentang
@@ -30,7 +27,7 @@
 | Situs dan dokumentasi | [https://wiki.kavitareader.com](https://wiki.kavitareader.com) [1] |
 | Kode sumber | [https://github.com/Kareadita/Kavita](https://github.com/Kareadita/Kavita) [2] |
 | Lisensi | GNU GPL v3, gratis [2] |
-| Versi yang dipasang | v0.9.1.4 (terlihat di log container) |
+| Versi yang dipasang | v0.9.1.4 |
 | Catatan pengembang | Masih beta sampai rilis 1.0.0, data bisa hilang walau tim berusaha mencegahnya [2] |
 
 Lingkungan praktik (Laptop Server):
@@ -385,12 +382,17 @@ Semua contoh memakai file uji milik sendiri atau berlisensi bebas. Letak menu bi
 
 Akses URL publik melalui browser: **https://kavita.fatihzar.my.id/**. Pada kunjungan pertama, Kavita meminta kita membuat akun admin. Isi nama pengguna, email, dan kata sandi, lalu klik **Register**.
 
-![Halaman pembuatan akun admin](screenshots/01-akun-admin.png)
+<img width="1600" height="772" alt="image" src="https://github.com/user-attachments/assets/0f62a2ba-7cf8-4603-9949-273747f55015" />
 
 #### 2. Siapkan file uji
 
-Taruh beberapa file (`.epub`, `.cbz`, `.cbr`, `.pdf`) di folder bacaan server, lalu cek bahwa file terlihat dari terminal:
+Taruh beberapa file (`.epub`, `.cbz`, `.cbr`, `.pdf`) di folder bacaan server, 
+```bash
+# Contoh memindahkan file komik ke laptop server
+scp /lokasi/komputer/kamu/komik.cbz fatihzaraj@<IP_LAPTOP_SERVER>:~/manga/
+```
 
+lalu cek bahwa file terlihat dari terminal:
 ```bash
 ls -l ~/manga
 ```
@@ -402,14 +404,16 @@ ls -l ~/manga
 
 Di antarmuka Kavita, masuk ke menu **Server Settings** > **Libraries** > **"Add Library"** baru bertipe sesuai isi file (misalnya Manga, Comic, atau Book), lalu pilih folder `/manga` (path internal di dalam container yang mengarah ke `~/manga` pada host server). Jalankan **Scan Library**.
 
+Klik Add Library:
 <img width="1600" height="763" alt="image" src="https://github.com/user-attachments/assets/57a3b2c1-2c8c-4407-8c2d-08a25053e47c" />
 
+Isi nama dan type:
 <img width="1600" height="802" alt="image" src="https://github.com/user-attachments/assets/b13ac29e-8ae5-4002-816d-cc85487152c6" />
 
+Pilih folder:
 <img width="1600" height="846" alt="image" src="https://github.com/user-attachments/assets/8c707b94-45b8-444b-bc2e-0aa70a4a8169" />
 
-<img width="1600" height="809" alt="image" src="https://github.com/user-attachments/assets/b0108006-caff-4100-acd7-be37a0d26b7e" />
-
+Cover image bisa diisi, jika kosong akan ditampilkan cover halaman pertama, klik next
 <img width="1600" height="809" alt="image" src="https://github.com/user-attachments/assets/a19ceca7-56ce-43c0-932b-653c748ae33a" />
 
 
@@ -430,8 +434,11 @@ Buka salah satu judul komik/buku di pembaca bawaan peramban web (*web reader*).
 
 Buat sebuah **Collection** atau **Reading List** dan masukkan beberapa judul seri untuk kerapian organisasi koleksi.
 
+Klik titik tiga pada Komik yang ingin dipilih, lalu arahkan kursor pada "Add to" dan klik "Add to Collection"
 <img width="1600" height="803" alt="image" src="https://github.com/user-attachments/assets/26f7bf57-864b-4392-bd67-df26be4ae52d" />
+Tulis nama Collection contoh "Fiksi":
 <img width="1600" height="804" alt="image" src="https://github.com/user-attachments/assets/728728c4-cb6e-4953-afb8-bba311e7f64e" />
+Cek Hasil: 
 <img width="1600" height="813" alt="image" src="https://github.com/user-attachments/assets/3db6d9e2-95c2-42a2-88c9-1c073ce5ea10" />
 
 
@@ -460,39 +467,37 @@ Diambil dengan perintah `sudo docker stats --no-stream` di server, diulang tiga 
 
 <img width="1600" height="121" alt="image" src="https://github.com/user-attachments/assets/803d4d22-b9ff-4ee9-93d1-f65c22b76f20" />
 
-
 | Kondisi | RAM (MiB) | CPU (%) |
 |---|---|---|
-| Idle, setelah start selesai | ~180 - 220 MiB | < 1% |
+| Idle, setelah start selesai | ~260 - 280 MiB | < 1% |
 | Saat scan library | ~350 - 500 MiB | 15% - 35% |
-| Saat membaca file via web reader | ~200 - 250 MiB | 2% - 5% |
+| Saat membaca file via web reader | ~280 - 320 MiB | 2% - 5% |
 
 # Pembahasan
 [`^ kembali ke atas ^`](#)
 
 **Kavita** ditulis dalam bahasa pemrograman C# / .NET yang didukung oleh penggunaan basis data SQLite internal. Sebagai salah satu server media komik dan buku digital *self-hosted* yang modern, aplikasi ini menawarkan berbagai kelebihan, diantaranya :
-- Instalasi singkat lewat Docker Compose karena hanya membutuhkan satu berkas `compose.yaml`[cite: 3].
-- Tanpa database dan web server terpisah karena modul basis data sudah terintegrasi secara internal[cite: 3].
-- Satu server untuk komik, manga, dan buku digital dalam satu wadah terpadu[cite: 3].
-- Manajemen pengguna lengkap dengan kontrol peran, hak akses, hingga batasan rating usia (*age restriction*)[cite: 3].
-- Gratis dan berlisensi sumber terbuka (GPL v3)[cite: 3].
-- Akses HTTPS lewat Cloudflare Tunnel tanpa buka port router lokal[cite: 3].
+- Instalasi singkat lewat Docker Compose karena hanya membutuhkan satu berkas `compose.yaml`.
+- Tanpa database dan web server terpisah karena modul basis data sudah terintegrasi secara internal.
+- Satu server untuk komik, manga, dan buku digital dalam satu wadah terpadu.
+- Manajemen pengguna lengkap dengan kontrol peran, hak akses, hingga batasan rating usia (*age restriction*).
+- Gratis dan berlisensi sumber terbuka (GPL v3).
+- Akses HTTPS lewat Cloudflare Tunnel tanpa buka port router lokal.
 
 Tentu saja, sebuah aplikasi pasti memiliki kekurangan. Kekurangan yang dimiliki **Kavita** antara lain :
-- Masih beta, data bisa hilang sehingga pengelola wajib melakukan pencadangan data secara berkala[cite: 3].
-- Start pertama lama dan log membingungkan karena memunculkan peringatan migrasi database[cite: 3].
-- Tidak ada konten bawaan sehingga pengguna harus menyediakan dan mengunggah berkas koleksinya sendiri[cite: 3].
-- Server diurus sendiri, mencakup stabilitas perangkat keras, pasokan daya, konektivitas, hingga pembaruan sistem[cite: 3].
-- Metadata internet butuh Kavita+ berbayar untuk fitur pengindeksan metadata otomatis berskala besar[cite: 3].
+- Masih beta, data bisa hilang sehingga pengelola wajib melakukan pencadangan data secara berkala.
+- Start pertama lama dan log membingungkan karena memunculkan peringatan migrasi database.
+- Tidak ada konten bawaan sehingga pengguna harus menyediakan dan mengunggah berkas koleksinya sendiri.
+- Server diurus sendiri, mencakup stabilitas perangkat keras, pasokan daya, konektivitas, hingga pembaruan sistem.
+- Metadata internet butuh Kavita+ berbayar untuk fitur pengindeksan metadata otomatis berskala besar.
 
 Jika dibandingkan dengan aplikasi komik daring populer seperti **LINE WEBTOON**, aplikasi ini memiliki beberapa keunggulan dan kelemahan. Berikut adalah beberapa perbandingan antara kedua aplikasi ini :
-- **Kavita** merupakan server pribadi yang berjalan di perangkat sendiri dan dibuka melalui *browser*, sedangkan **LINE WEBTOON** adalah layanan komik *online* milik penyedia pihak ketiga yang diakses melalui aplikasi iOS dan Android[cite: 2].
-- Sumber konten **Kavita** berasal dari berkas milik pengguna sendiri yang disimpan di dalam folder server, sedangkan **LINE WEBTOON** menyediakan katalog terpusat milik platform dengan koleksi lebih dari 7.000 karya[cite: 2].
-- Cara memulai **Kavita** membutuhkan langkah teknis (pemasangan Docker, Compose, Cloudflare Tunnel, dan pengaturan akun), sedangkan **LINE WEBTOON** sangat praktis karena pengguna cukup memasang aplikasi dari App Store atau Play Store[cite: 2].
-- Biaya operasional **Kavita** sepenuhnya gratis (fitur Kavita+ opsional dan perawatan server ditanggung sendiri), sedangkan **LINE WEBTOON** gratis diunduh namun menerapkan sistem transaksi koin (*Coins*) untuk membuka episode lebih awal (*Fast Pass*)[cite: 2].
-- Aturan akses bacaan pada **Kavita** ditentukan secara penuh oleh pemilik server, sedangkan pada **LINE WEBTOON** aturan akses dikendalikan sepihak oleh kebijakan platform (seperti kebijakan penutupan fitur *Daily Pass*)[cite: 2].
-- Pembaruan konten pada **Kavita** dilakukan secara mandiri dengan menambahkan berkas baru ke direktori server, sedangkan **LINE WEBTOON** memperbarui episode komik secara terjadwal dan rutin harian atau mingguan[cite: 2].
-
+- **Kavita** merupakan server pribadi yang berjalan di perangkat sendiri dan dibuka melalui *browser*, sedangkan **LINE WEBTOON** adalah layanan komik *online* milik penyedia pihak ketiga yang diakses melalui aplikasi iOS dan Android.
+- Sumber konten **Kavita** berasal dari berkas milik pengguna sendiri yang disimpan di dalam folder server, sedangkan **LINE WEBTOON** menyediakan katalog terpusat milik platform dengan koleksi lebih dari 7.000 karya.
+- Cara memulai **Kavita** membutuhkan langkah teknis (pemasangan Docker, Compose, Cloudflare Tunnel, dan pengaturan akun), sedangkan **LINE WEBTOON** sangat praktis karena pengguna cukup memasang aplikasi dari App Store atau Play Store.
+- Biaya operasional **Kavita** sepenuhnya gratis (fitur Kavita+ opsional dan perawatan server ditanggung sendiri), sedangkan **LINE WEBTOON** gratis diunduh namun menerapkan sistem transaksi koin (*Coins*) untuk membuka episode lebih awal (*Fast Pass*).
+- Aturan akses bacaan pada **Kavita** ditentukan secara penuh oleh pemilik server, sedangkan pada **LINE WEBTOON** aturan akses dikendalikan sepihak oleh kebijakan platform (seperti kebijakan penutupan fitur *Daily Pass*).
+- Pembaruan konten pada **Kavita** dilakukan secara mandiri dengan menambahkan berkas baru ke direktori server, sedangkan **LINE WEBTOON** memperbarui episode komik secara terjadwal dan rutin harian atau mingguan.
 
 
 # Referensi
