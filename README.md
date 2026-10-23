@@ -1,5 +1,5 @@
 <p align="center">
-  <img width="731" height="341" alt="Unknown-removebg-preview" src="https://github.com/user-attachments/assets/5ff01161-508f-4cfa-ade6-9263f962613c" />
+  <img width="1024" height="478" alt="Unknown" src="https://github.com/user-attachments/assets/9e84bf54-140b-4e8d-9cc0-3c0b88397cdb" />
 </p>
 
 <h1 align="center">Kavita</h1>
