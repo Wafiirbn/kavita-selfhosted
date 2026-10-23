@@ -75,6 +75,7 @@ flowchart LR
    ssh fatihzaraj@192.168.1.50
    ```
 2. **Persiapan direktori kerja dan pengecekan port**
+   
    Pastikan port internal `50000` belum digunakan oleh layanan lain, kemudian buat direktori untuk proyek Kavita beserta folder penyimpanan berkas bacaan (`manga`):
 
    ```bash
@@ -119,6 +120,7 @@ flowchart LR
 </details>
 
 4. **Validasi, unduh image, dan jalankan container**
+   
    Lakukan verifikasi sintaks file `compose.yaml`, unduh *image* resmi dari Docker Hub, lalu jalankan layanan di latar belakang (*detached mode*):
 
    ```bash
@@ -153,6 +155,7 @@ Tanda Kavita siap ada di log: `Now listening on: [http://[::]:5000](http://[::]:
 </details>
 
 5. **Konfigurasi Akses Publik & SSL via Cloudflare Tunnel**
+
    Agar container Kavita yang berjalan di port lokal 50000 dapat diakses dengan aman oleh publik melalui domain https://kavita.fatihzar.my.id/, kita tidak menggunakan Nginx/Certbot, melainkan Cloudflare Tunnel (cloudflared). Cara ini lebih aman karena tidak perlu membuka port (port forwarding) di router.
 
    1. **Instalasi Daemon cloudflared di Server:**
@@ -198,6 +201,7 @@ Tanda Kavita siap ada di log: `Now listening on: [http://[::]:5000](http://[::]:
 
 
 6. **Akses publik dan inisialisasi akun Administrator**
+ 
    Buka peramban (*web browser*) di komputer atau ponsel pintar, lalu akses tautan publik:
 
    👉 **[https://kavita.fatihzar.my.id/](https://kavita.fatihzar.my.id/)**
