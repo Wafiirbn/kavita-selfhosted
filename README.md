@@ -395,31 +395,45 @@ Taruh beberapa file (`.epub`, `.cbz`, `.cbr`, `.pdf`) di folder bacaan server, l
 ls -l ~/manga
 ```
 
-![Isi folder bacaan](screenshots/02-file-uji.png)
+<img width="1025" height="180" alt="image" src="https://github.com/user-attachments/assets/d03c7c1c-1fd0-4372-9847-89bf93f9a8de" />
+
 
 #### 3. Buat library
 
-Di antarmuka Kavita, masuk ke menu **Server Settings** > **Libraries**, tambah library baru bertipe sesuai isi file (misalnya Manga, Comic, atau Book), lalu pilih folder `/manga` (path internal di dalam container yang mengarah ke `~/manga` pada host server). Jalankan **Scan Library**.
+Di antarmuka Kavita, masuk ke menu **Server Settings** > **Libraries** > **"Add Library"** baru bertipe sesuai isi file (misalnya Manga, Comic, atau Book), lalu pilih folder `/manga` (path internal di dalam container yang mengarah ke `~/manga` pada host server). Jalankan **Scan Library**.
 
-![Form pembuatan library](screenshots/03-buat-library.png)
+<img width="1600" height="763" alt="image" src="https://github.com/user-attachments/assets/57a3b2c1-2c8c-4407-8c2d-08a25053e47c" />
+
+<img width="1600" height="802" alt="image" src="https://github.com/user-attachments/assets/b13ac29e-8ae5-4002-816d-cc85487152c6" />
+
+<img width="1600" height="846" alt="image" src="https://github.com/user-attachments/assets/8c707b94-45b8-444b-bc2e-0aa70a4a8169" />
+
+<img width="1600" height="809" alt="image" src="https://github.com/user-attachments/assets/b0108006-caff-4100-acd7-be37a0d26b7e" />
+
+<img width="1600" height="809" alt="image" src="https://github.com/user-attachments/assets/a19ceca7-56ce-43c0-932b-653c748ae33a" />
+
 
 #### 4. Lihat hasil scan
 
 Setelah proses pemindaian selesai, file uji akan tampil sebagai koleksi seri di halaman library utama.
 
-![Library berisi file uji](screenshots/04-library.png)
+<img width="1600" height="810" alt="image" src="https://github.com/user-attachments/assets/86ac6e90-4c80-44c7-9dbe-9fa2b709857f" />
+
 
 #### 5. Buka pembaca
 
-Buka salah satu judul komik/buku di pembaca bawaan peramban web (*web reader*). Coba mode baca yang tersedia (misalnya *Webtoon mode*, *Page-by-Page*, atau *Continuous Vertical*).
+Buka salah satu judul komik/buku di pembaca bawaan peramban web (*web reader*). 
+<img width="1917" height="916" alt="image" src="https://github.com/user-attachments/assets/5b37328f-9120-4dea-8eae-f1a6451e4ec9" />
 
-![Tampilan pembaca](screenshots/05-pembaca.png)
 
 #### 6. Kelompokkan bacaan
 
 Buat sebuah **Collection** atau **Reading List** dan masukkan beberapa judul seri untuk kerapian organisasi koleksi.
 
-![Collection atau reading list](screenshots/06-collection.png)
+<img width="1600" height="803" alt="image" src="https://github.com/user-attachments/assets/26f7bf57-864b-4392-bd67-df26be4ae52d" />
+<img width="1600" height="804" alt="image" src="https://github.com/user-attachments/assets/728728c4-cb6e-4953-afb8-bba311e7f64e" />
+<img width="1600" height="813" alt="image" src="https://github.com/user-attachments/assets/3db6d9e2-95c2-42a2-88c9-1c073ce5ea10" />
+
 
 #### 7. Uji restart & pemulihan otomatis
 
@@ -438,11 +452,14 @@ cd ~/kavita && sudo docker compose ps
 
 Layanan Kavita harus berada pada status `Up` secara otomatis, daemon `cloudflared` aktif, serta seluruh data akun dan library tetap tersimpan penuh.
 
-![Status setelah restart](screenshots/07-setelah-restart.png)
+<img width="1600" height="324" alt="image" src="https://github.com/user-attachments/assets/ebd917da-b28e-4a70-8695-1739bfe302fc" />
 
 #### Hasil pengukuran sumber daya
 
 Diambil dengan perintah `sudo docker stats --no-stream` di server, diulang tiga kali lalu dirata-rata:
+
+<img width="1600" height="121" alt="image" src="https://github.com/user-attachments/assets/803d4d22-b9ff-4ee9-93d1-f65c22b76f20" />
+
 
 | Kondisi | RAM (MiB) | CPU (%) |
 |---|---|---|
@@ -450,4 +467,41 @@ Diambil dengan perintah `sudo docker stats --no-stream` di server, diulang tiga 
 | Saat scan library | ~350 - 500 MiB | 15% - 35% |
 | Saat membaca file via web reader | ~200 - 250 MiB | 2% - 5% |
 
+# Pembahasan
+[`^ kembali ke atas ^`](#)
 
+**Kavita** ditulis dalam bahasa pemrograman C# / .NET yang didukung oleh penggunaan basis data SQLite internal. Sebagai salah satu server media komik dan buku digital *self-hosted* yang modern, aplikasi ini menawarkan berbagai kelebihan, diantaranya :
+- Instalasi singkat lewat Docker Compose karena hanya membutuhkan satu berkas `compose.yaml`[cite: 3].
+- Tanpa database dan web server terpisah karena modul basis data sudah terintegrasi secara internal[cite: 3].
+- Satu server untuk komik, manga, dan buku digital dalam satu wadah terpadu[cite: 3].
+- Manajemen pengguna lengkap dengan kontrol peran, hak akses, hingga batasan rating usia (*age restriction*)[cite: 3].
+- Gratis dan berlisensi sumber terbuka (GPL v3)[cite: 3].
+- Akses HTTPS lewat Cloudflare Tunnel tanpa buka port router lokal[cite: 3].
+
+Tentu saja, sebuah aplikasi pasti memiliki kekurangan. Kekurangan yang dimiliki **Kavita** antara lain :
+- Masih beta, data bisa hilang sehingga pengelola wajib melakukan pencadangan data secara berkala[cite: 3].
+- Start pertama lama dan log membingungkan karena memunculkan peringatan migrasi database[cite: 3].
+- Tidak ada konten bawaan sehingga pengguna harus menyediakan dan mengunggah berkas koleksinya sendiri[cite: 3].
+- Server diurus sendiri, mencakup stabilitas perangkat keras, pasokan daya, konektivitas, hingga pembaruan sistem[cite: 3].
+- Metadata internet butuh Kavita+ berbayar untuk fitur pengindeksan metadata otomatis berskala besar[cite: 3].
+
+Jika dibandingkan dengan aplikasi komik daring populer seperti **LINE WEBTOON**, aplikasi ini memiliki beberapa keunggulan dan kelemahan. Berikut adalah beberapa perbandingan antara kedua aplikasi ini :
+- **Kavita** merupakan server pribadi yang berjalan di perangkat sendiri dan dibuka melalui *browser*, sedangkan **LINE WEBTOON** adalah layanan komik *online* milik penyedia pihak ketiga yang diakses melalui aplikasi iOS dan Android[cite: 2].
+- Sumber konten **Kavita** berasal dari berkas milik pengguna sendiri yang disimpan di dalam folder server, sedangkan **LINE WEBTOON** menyediakan katalog terpusat milik platform dengan koleksi lebih dari 7.000 karya[cite: 2].
+- Cara memulai **Kavita** membutuhkan langkah teknis (pemasangan Docker, Compose, Cloudflare Tunnel, dan pengaturan akun), sedangkan **LINE WEBTOON** sangat praktis karena pengguna cukup memasang aplikasi dari App Store atau Play Store[cite: 2].
+- Biaya operasional **Kavita** sepenuhnya gratis (fitur Kavita+ opsional dan perawatan server ditanggung sendiri), sedangkan **LINE WEBTOON** gratis diunduh namun menerapkan sistem transaksi koin (*Coins*) untuk membuka episode lebih awal (*Fast Pass*)[cite: 2].
+- Aturan akses bacaan pada **Kavita** ditentukan secara penuh oleh pemilik server, sedangkan pada **LINE WEBTOON** aturan akses dikendalikan sepihak oleh kebijakan platform (seperti kebijakan penutupan fitur *Daily Pass*)[cite: 2].
+- Pembaruan konten pada **Kavita** dilakukan secara mandiri dengan menambahkan berkas baru ke direktori server, sedangkan **LINE WEBTOON** memperbarui episode komik secara terjadwal dan rutin harian atau mingguan[cite: 2].
+
+
+
+# Referensi
+[`^ kembali ke atas ^`](#)
+
+1. [Kavita Documentation & Wiki](https://wiki.kavitareader.com) - Dokumentasi resmi panduan instalasi Docker dan arsitektur sistem.
+2. [Kareadita/Kavita GitHub Repository](https://github.com/Kareadita/Kavita) - Repositori kode sumber resmi, lisensi GPL-3.0, serta format berkas yang didukung.
+3. [Install Docker Engine on Ubuntu](https://docs.docker.com/engine/install/ubuntu/) - Dokumentasi instalasi resmi Docker Engine dan Docker Compose plugin.
+4. [LINE WEBTOON Help Center](https://help2.line.me/LINE_WEBTOON/android/categoryId/20006001/3/pc?lang=en) - Panduan operasional platform, kebijakan monetisasi koin, dan sistem tiket baca.
+5. [Anime News Network (ANN): Webtoon Service Ends Daily Pass Feature](https://www.animenewsnetwork.com/news/.225053) - Laporan perubahan kebijakan monetisasi dan penghentian fitur Daily Pass pada LINE Webtoon.
+6. [Cloudflare Zero Trust Documentation](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) - Petunjuk teknis penerapan daemon `cloudflared` untuk publikasi layanan web tanpa port forwarding.
+7. [Log Operasional & Pengujian Server Fisik](https://kavita.fatihzar.my.id/) - Data telemetri operasional kontainer, pemantauan sumber daya `docker stats`, dan uji kelangsungan restart pada server bare-metal Linux Mint.
